@@ -171,7 +171,7 @@ ${node_options_line}
 Notes:
   - Global developer lessons should live in the global brain when they should help other repos too
   - Team baseline stays in git under brains/team-brain/brain_v4
-  - Project-specific auto-growth should target the tracked project brain, not the tracked team brain
+  - Project-specific auto-growth should target \$CPB_PROJECT_BRAIN, not the tracked team brain
   - Device-only quirks belong in the local device brain
   - Re-run this script after global, team, project, or device brain updates that you want reflected in runtime
 ${binary_note}
