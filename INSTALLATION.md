@@ -61,6 +61,21 @@ From that point on, the intended daily workflow is:
 
 For real desktop/laptop sync, the personal repo still needs a git remote upstream.
 
+The mental model should stay simple:
+
+- you keep working in the current project repo
+- CPB uses your personal private repo as the learning-sync hub
+- git hooks make that sync happen during normal project `git pull` / `git push`
+
+Hook behavior:
+
+- `pre-push`
+  - personal repo `commit/pull/push`
+  - then project push
+- `post-merge`, `post-checkout`, `post-rewrite`
+  - personal repo `pull`
+  - then runtime brain rebuild
+
 If you skipped `--personal-repo` during install, you can still wire it later:
 
 ```bash

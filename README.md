@@ -172,13 +172,37 @@ If you pass `--personal-repo`, the installer also assumes a recommended GitHub p
 
 If you pass `--personal-repo ... --shared-repo` in that one-line install, the private-repo wiring is done immediately.
 
+## How Sync Works
+
+This is the core day-to-day behavior:
+
+1. You work in the current project repo as usual.
+2. When you run `git push` in the project repo, CPB first tries to sync your personal private brain repo.
+3. When you run `git pull` in the project repo, CPB first tries to pull your personal private brain repo.
+4. After that pull-side refresh, CPB rebuilds the runtime brain so the updated learning is available immediately.
+
+In other words:
+
+- your **project repo** is still the repo you touch every day
+- your **personal private brain repo** is the sync hub for your reusable learning
+- git hooks glue the two together so desktop/laptop sync happens during normal project `git pull` / `git push`
+
+The hooks are wired like this:
+
+- `pre-push`
+  - tries to `commit/pull/push` your personal private repo first
+  - then continues the current project push
+- `post-merge`, `post-checkout`, `post-rewrite`
+  - try to pull your personal private repo first
+  - then rebuild the runtime brain
+
 When the install finishes, the first check should usually be:
 
 ```bash
 bash scripts/cpb-doctor.sh
 ```
 
-After that, the intended day-to-day flow is just normal git usage in the current project repo:
+After that, the intended day-to-day flow is still just normal git usage in the current project repo:
 
 - `git pull`
   - tries to pull your personal private repo first
