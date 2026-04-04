@@ -9,6 +9,10 @@ personal_repo_name="${CPB_PERSONAL_REPO_NAME:-cpb-personal}"
 personal_repo_create_mode="${CPB_CREATE_PERSONAL_REMOTE:-ask}"
 project_brain_mode_override=""
 project_brain_in_personal_repo=0
+personal_repo_remote_found=0
+personal_repo_remote_created=0
+personal_repo_origin_url=""
+personal_repo_bootstrap_mode="unknown"
 
 usage() {
   cat <<EOF
@@ -68,6 +72,31 @@ expand_path() {
 
 shell_escape() {
   printf '%q' "$1"
+}
+
+personal_repo_local_state() {
+  local target="$1"
+
+  if [[ -d "$target/.git" ]]; then
+    printf 'git-repo\n'
+    return 0
+  fi
+
+  if [[ ! -e "$target" ]]; then
+    printf 'missing\n'
+    return 0
+  fi
+
+  if [[ -d "$target" ]]; then
+    if [[ -z "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+      printf 'empty-dir\n'
+    else
+      printf 'occupied-dir\n'
+    fi
+    return 0
+  fi
+
+  printf 'occupied-file\n'
 }
 
 can_prompt_tty() {
@@ -158,6 +187,10 @@ check_personal_remote_guidance() {
   local personal_repo="$2"
   local expected_slug="${operator_id}/${personal_repo_name}"
   local origin_url=""
+  personal_repo_remote_found=0
+  personal_repo_remote_created=0
+  personal_repo_origin_url=""
+  personal_repo_bootstrap_mode="unknown"
 
   origin_url="$(git -C "$personal_repo" remote get-url origin 2>/dev/null || true)"
 
@@ -189,6 +222,8 @@ GitHub private repo check:
   - found: $expected_slug
   - visibility: $visibility
 EOF
+      personal_repo_remote_found=1
+      personal_repo_bootstrap_mode="returning-user"
 
       if [[ "$visibility" != "PRIVATE" && "$visibility" != "INTERNAL" ]]; then
         cat <<EOF
@@ -198,15 +233,14 @@ EOF
 
       if [[ -z "$origin_url" ]]; then
         if [[ -n "$ssh_url" ]]; then
-          git -C "$personal_repo" remote add origin "$ssh_url"
           origin_url="$ssh_url"
         elif [[ -n "$https_url" ]]; then
-          git -C "$personal_repo" remote add origin "$https_url"
           origin_url="$https_url"
         fi
       fi
     else
       local should_create="no"
+      personal_repo_bootstrap_mode="first-user"
 
       case "$personal_repo_create_mode" in
         always)
@@ -250,13 +284,14 @@ GitHub private repo check:
   - created: $expected_slug
   - visibility: $visibility
 EOF
+            personal_repo_remote_found=1
+            personal_repo_remote_created=1
+            personal_repo_bootstrap_mode="first-user"
 
             if [[ -z "$origin_url" ]]; then
               if [[ -n "$ssh_url" ]]; then
-                git -C "$personal_repo" remote add origin "$ssh_url"
                 origin_url="$ssh_url"
               elif [[ -n "$https_url" ]]; then
-                git -C "$personal_repo" remote add origin "$https_url"
                 origin_url="$https_url"
               fi
             fi
@@ -285,6 +320,7 @@ EOF
   fi
 
   if [[ -n "$origin_url" ]]; then
+    personal_repo_origin_url="$origin_url"
     cat <<EOF
 Personal repo origin:
   $origin_url
@@ -294,6 +330,77 @@ EOF
 Personal repo origin:
   - not configured yet
 EOF
+  fi
+}
+
+sync_personal_repo_checkout() {
+  local personal_repo="$1"
+  local origin_url="$2"
+  local repo_state
+  repo_state="$(personal_repo_local_state "$personal_repo")"
+
+  case "$repo_state" in
+    missing)
+      if [[ -n "$origin_url" ]]; then
+        git clone "$origin_url" "$personal_repo" >/dev/null 2>&1 || {
+          mkdir -p "$personal_repo"
+          git init -q "$personal_repo"
+        }
+      else
+        mkdir -p "$personal_repo"
+        git init -q "$personal_repo"
+      fi
+      ;;
+    empty-dir)
+      if [[ -n "$origin_url" ]]; then
+        git clone "$origin_url" "$personal_repo" >/dev/null 2>&1 || git init -q "$personal_repo"
+      else
+        git init -q "$personal_repo"
+      fi
+      ;;
+    occupied-dir|occupied-file)
+      cat <<EOF
+Local personal repo path check:
+  - path exists but is not a git repo checkout: $personal_repo
+  - leaving it untouched; move it away or choose another path if you want automatic clone/sync
+EOF
+      return 0
+      ;;
+  esac
+
+  if [[ ! -d "$personal_repo/.git" ]]; then
+    return 0
+  fi
+
+  if [[ -n "$origin_url" ]]; then
+    current_origin="$(git -C "$personal_repo" remote get-url origin 2>/dev/null || true)"
+    if [[ -z "$current_origin" ]]; then
+      git -C "$personal_repo" remote add origin "$origin_url"
+    elif [[ "$current_origin" != "$origin_url" ]]; then
+      git -C "$personal_repo" remote set-url origin "$origin_url"
+    fi
+
+    git -C "$personal_repo" fetch origin >/dev/null 2>&1 || true
+
+    if ! git -C "$personal_repo" rev-parse --verify HEAD >/dev/null 2>&1; then
+      if git -C "$personal_repo" show-ref --verify --quiet refs/remotes/origin/main; then
+        git -C "$personal_repo" checkout -q -B main --track origin/main >/dev/null 2>&1 || true
+      elif git -C "$personal_repo" show-ref --verify --quiet refs/remotes/origin/master; then
+        git -C "$personal_repo" checkout -q -B master --track origin/master >/dev/null 2>&1 || true
+      fi
+      return 0
+    fi
+
+    if git -C "$personal_repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+      git -C "$personal_repo" pull --ff-only >/dev/null 2>&1 || true
+      return 0
+    fi
+
+    current_branch="$(git -C "$personal_repo" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ -n "$current_branch" ]] && git -C "$personal_repo" show-ref --verify --quiet "refs/remotes/origin/$current_branch"; then
+      git -C "$personal_repo" branch --set-upstream-to "origin/$current_branch" "$current_branch" >/dev/null 2>&1 || true
+      git -C "$personal_repo" pull --ff-only >/dev/null 2>&1 || true
+    fi
   fi
 }
 
@@ -372,10 +479,9 @@ seed_project_brain_if_empty() {
   done
 }
 
+check_personal_remote_guidance "$operator_id" "$personal_repo"
+sync_personal_repo_checkout "$personal_repo" "$personal_repo_origin_url"
 mkdir -p "$global_brain" "$career_docs_root"
-if [[ ! -d "$personal_repo/.git" ]]; then
-  git init -q "$personal_repo"
-fi
 
 if [[ -z "$project_brain_mode_override" ]]; then
   if [[ "$project_brain_in_personal_repo" -eq 1 ]]; then
@@ -466,20 +572,17 @@ fi
 
 mv "$temp_file" "$bashrc"
 
-remote_guidance="$(check_personal_remote_guidance "$operator_id" "$personal_repo")"
-
 cat <<EOF
 CPB personal repo pinned.
 
 Repo:              $repo_root
 Operator:          $operator_id
 Personal repo:     $personal_repo
+Bootstrap mode:    $personal_repo_bootstrap_mode
 Global brain:      $global_brain
 Career docs root:  $career_docs_root
 Bash rc:           $bashrc
 EOF
-
-printf '%s\n' "$remote_guidance"
 
 if [[ "$project_brain_mode" == "personal" ]]; then
   if [[ "$shared_repo" -eq 1 ]]; then
@@ -537,5 +640,5 @@ After that, keep using normal git in the project repo:
   - git pull -> tries to pull your personal repo first, then rebuilds runtime brain
   - git push -> tries to commit/pull/push your personal repo before the project push
 
-For desktop/laptop sync, add a git remote upstream to the personal repo.
+If the personal repo origin exists but upstream is still missing, CPB will publish the first sync push automatically.
 EOF

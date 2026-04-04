@@ -130,6 +130,35 @@ project_brain_mode() {
   printf 'custom'
 }
 
+personal_repo_bootstrap_state() {
+  local repo_path="$1"
+  local origin_url="$2"
+  local current_branch=""
+
+  if [[ ! -d "$repo_path/.git" ]]; then
+    printf 'not initialized'
+    return 0
+  fi
+
+  if [[ -z "$origin_url" ]]; then
+    printf 'local repo only; remote sync is not wired yet'
+    return 0
+  fi
+
+  if git -C "$repo_path" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+    printf 'ready'
+    return 0
+  fi
+
+  current_branch="$(git -C "$repo_path" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ -n "$current_branch" ]] && git -C "$repo_path" show-ref --verify --quiet "refs/remotes/origin/$current_branch"; then
+    printf 'origin found; upstream is missing but CPB can repair it on the next sync push'
+    return 0
+  fi
+
+  printf 'first-user bootstrap pending first sync push'
+}
+
 line "Cross-Project Brain doctor"
 line
 
@@ -186,11 +215,13 @@ else
       warn "personal repo origin" "missing; connect this repo to ${CPB_OPERATOR_ID}/${personal_repo_name}"
     fi
 
+    info "personal repo bootstrap" "$(personal_repo_bootstrap_state "$CPB_PERSONAL_REPO" "$origin_url")"
+
     if git -C "$CPB_PERSONAL_REPO" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
       upstream_ref="$(git -C "$CPB_PERSONAL_REPO" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
       ok "personal repo upstream" "${upstream_ref:-configured}"
     else
-      warn "personal repo upstream" "missing; push once with -u so project git push can sync automatically"
+      warn "personal repo upstream" "missing; CPB will set it on the next successful personal sync push when origin is reachable"
     fi
   fi
 fi
