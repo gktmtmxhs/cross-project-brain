@@ -279,7 +279,7 @@ if [[ "$skip_install" -eq 0 ]]; then
     CPB_PROJECT_BRAIN="$project_brain_path" \
     bash "$script_dir/cpb-install-neuronfs.sh"
   else
-    printf 'Go is not available; installing NeuronFS in hook-only mode.\n'
+    printf 'Go is not available; installing NeuronFS in degraded hook-only mode (autogrowth disabled).\n'
     CPB_REPO_ROOT="$repo_root" \
     CPB_OPERATOR="$operator" \
     CPB_PERSONAL_REPO="$personal_repo" \

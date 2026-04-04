@@ -288,8 +288,8 @@ if [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
     neuronfs_summary="cli installed"
     neuronfs_summary_level="ok"
   else
-    neuronfs_summary="hook-only mode"
-    neuronfs_summary_level="info"
+    neuronfs_summary="degraded: hook-only mode"
+    neuronfs_summary_level="warn"
   fi
 fi
 
@@ -429,7 +429,7 @@ fi
 if [[ -f "$CPB_NEURONFS_INSTALL_DIR/neuronfs" ]]; then
   ok "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs"
 elif [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
-  info "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs (missing; hook-only mode is active, Go is only needed for the standalone CLI)"
+  warn "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs (missing; hook-only mode is active, so CPB autogrowth is disabled until Go or a prebuilt NeuronFS CLI is installed)"
 else
   warn "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs (missing)"
 fi

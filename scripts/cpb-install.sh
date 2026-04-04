@@ -253,7 +253,7 @@ if [[ "$install_neuronfs" -eq 1 ]]; then
     NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
     bash "$target_repo/scripts/cpb-install-neuronfs.sh"
   else
-    printf 'Go is not available; continuing with NeuronFS hook-only mode.\n'
+    printf 'Go is not available; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
     CPB_REPO_ROOT="$target_repo" \
     CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
     NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \

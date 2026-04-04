@@ -204,10 +204,10 @@ test("cpb doctor treats hook-only NeuronFS installs as ready", () => {
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /NeuronFS\s+\[INFO\] hook-only mode/u);
+  assert.match(result.stdout, /NeuronFS\s+\[WARN\] degraded: hook-only mode/u);
   assert.match(
     result.stdout,
-    /\[INFO\] neuronfs cli\s+.+hook-only mode is active, Go is only needed for the standalone CLI/u,
+    /\[WARN\] neuronfs cli\s+.+hook-only mode is active, so CPB autogrowth is disabled until Go or a prebuilt NeuronFS CLI is installed/u,
   );
-  assert.match(result.stdout, /Overall\s+\[OK\] ready/u);
+  assert.match(result.stdout, /Overall\s+\[WARN\] attention needed/u);
 });
