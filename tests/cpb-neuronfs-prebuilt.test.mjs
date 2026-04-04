@@ -99,6 +99,19 @@ test("cpb neuronfs prebuilt helper prints deterministic asset and download URLs"
     urlResult.stdout.trim(),
     "https://example.invalid/releases/download/neuronfs-970e0cd/neuronfs-970e0cd-linux-amd64.tar.gz",
   );
+
+  const checksumResult = run("/bin/bash", [
+    helperPath,
+    "checksum-url",
+    "970e0cd",
+    "linux",
+    "amd64",
+    "https://example.invalid/releases/download/neuronfs-970e0cd",
+  ]);
+  assert.equal(
+    checksumResult.stdout.trim(),
+    "https://example.invalid/releases/download/neuronfs-970e0cd/neuronfs-970e0cd-linux-amd64.tar.gz.sha256",
+  );
 });
 
 test("cpb install-neuronfs downloads a prebuilt CLI when available", () => {
@@ -106,6 +119,7 @@ test("cpb install-neuronfs downloads a prebuilt CLI when available", () => {
   const assetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-neuronfs-assets-"));
   const archiveVersion = fakeRepo.ref;
   const assetName = `neuronfs-${archiveVersion}-linux-amd64.tar.gz`;
+  const checksumName = `${assetName}.sha256`;
   const assetBinaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-neuronfs-binary-"));
   const installDir = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-neuronfs-install-"));
 
@@ -115,6 +129,9 @@ test("cpb install-neuronfs downloads a prebuilt CLI when available", () => {
   );
 
   run("tar", ["-C", assetBinaryRoot, "-czf", path.join(assetRoot, assetName), "neuronfs"]);
+  const archivePath = path.join(assetRoot, assetName);
+  const checksum = run("sha256sum", [archivePath]).stdout.trim().split(/\s+/u)[0];
+  fs.writeFileSync(path.join(assetRoot, checksumName), `${checksum}  ${assetName}\n`, "utf8");
 
   const result = spawnSync("/bin/bash", [installPath], {
     cwd: repoRoot,
@@ -135,5 +152,6 @@ test("cpb install-neuronfs downloads a prebuilt CLI when available", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Build:\s+cli prebuilt ok/u);
   assert.match(result.stdout, /Prebuilt:\s+file:\/\//u);
+  assert.match(result.stdout, /Checksum:\s+verified via file:\/\//u);
   assert.ok(fs.existsSync(path.join(installDir, "neuronfs")));
 });

@@ -51,6 +51,13 @@ cpdb_neuronfs_prebuilt_asset_name() {
   printf 'neuronfs-%s-%s-%s.tar.gz\n' "$version" "$goos" "$goarch"
 }
 
+cpdb_neuronfs_prebuilt_checksum_name() {
+  local version="${1:?version required}"
+  local goos="${2:?goos required}"
+  local goarch="${3:?goarch required}"
+  printf '%s.sha256\n' "$(cpdb_neuronfs_prebuilt_asset_name "$version" "$goos" "$goarch")"
+}
+
 cpdb_neuronfs_prebuilt_default_tag() {
   local version="${1:?version required}"
   printf 'neuronfs-%s\n' "$version"
@@ -78,6 +85,21 @@ cpdb_neuronfs_prebuilt_download_url() {
   printf '%s/%s\n' "${base_url%/}" "$asset_name"
 }
 
+cpdb_neuronfs_prebuilt_checksum_url() {
+  local version="${1:?version required}"
+  local goos="${2:?goos required}"
+  local goarch="${3:?goarch required}"
+  local base_url="${4:-}"
+  local checksum_name
+
+  if [[ -z "$base_url" ]]; then
+    base_url="$(cpdb_neuronfs_prebuilt_default_base_url "$version")"
+  fi
+
+  checksum_name="$(cpdb_neuronfs_prebuilt_checksum_name "$version" "$goos" "$goarch")"
+  printf '%s/%s\n' "${base_url%/}" "$checksum_name"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   set -euo pipefail
 
@@ -101,6 +123,16 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
       fi
       cpdb_neuronfs_prebuilt_asset_name "$version" "$goos" "$goarch"
       ;;
+    checksum-name)
+      version="${1:-}"
+      goos="${2:-}"
+      goarch="${3:-}"
+      if [[ -z "$version" || -z "$goos" || -z "$goarch" ]]; then
+        echo "Usage: bash scripts/cpb-neuronfs-prebuilt.sh checksum-name <version> <goos> <goarch>" >&2
+        exit 1
+      fi
+      cpdb_neuronfs_prebuilt_checksum_name "$version" "$goos" "$goarch"
+      ;;
     base-url)
       version="${1:-}"
       if [[ -z "$version" ]]; then
@@ -120,13 +152,26 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
       fi
       cpdb_neuronfs_prebuilt_download_url "$version" "$goos" "$goarch" "$base_url"
       ;;
+    checksum-url)
+      version="${1:-}"
+      goos="${2:-}"
+      goarch="${3:-}"
+      base_url="${4:-}"
+      if [[ -z "$version" || -z "$goos" || -z "$goarch" ]]; then
+        echo "Usage: bash scripts/cpb-neuronfs-prebuilt.sh checksum-url <version> <goos> <goarch> [base-url]" >&2
+        exit 1
+      fi
+      cpdb_neuronfs_prebuilt_checksum_url "$version" "$goos" "$goarch" "$base_url"
+      ;;
     help|-h|--help|"")
       cat <<'EOF'
 Usage:
   bash scripts/cpb-neuronfs-prebuilt.sh print-platform
   bash scripts/cpb-neuronfs-prebuilt.sh asset-name <version> <goos> <goarch>
+  bash scripts/cpb-neuronfs-prebuilt.sh checksum-name <version> <goos> <goarch>
   bash scripts/cpb-neuronfs-prebuilt.sh base-url <version>
   bash scripts/cpb-neuronfs-prebuilt.sh download-url <version> <goos> <goarch> [base-url]
+  bash scripts/cpb-neuronfs-prebuilt.sh checksum-url <version> <goos> <goarch> [base-url]
 EOF
       ;;
     *)

@@ -143,6 +143,8 @@ The installer is designed to set up, in one pass:
 
 The installer now prefers a prebuilt `neuronfs` release asset for the current OS/arch. If a matching prebuilt asset is not available, it then tries to install `go` automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`) and builds the CLI locally. If both paths are unavailable, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
 
+When a prebuilt asset is used, the installer also downloads the matching `.sha256` file and verifies the archive before extracting it. If the checksum file is missing or invalid, CPB falls back to the local Go build path instead of trusting the archive blindly.
+
 Prebuilt release assets use this naming scheme:
 
 ```text
@@ -153,6 +155,12 @@ If you are publishing a CPB release, generate them with:
 
 ```bash
 bash scripts/cpb-build-neuronfs-prebuilt.sh --goos linux --goarch amd64
+```
+
+To publish the whole release matrix under the right tag in one pass:
+
+```bash
+bash scripts/cpb-publish-neuronfs-release.sh
 ```
 
 If you pass `--personal-repo`, the installer also assumes a recommended GitHub private repo name of `<github-username>/cpb-personal` and:

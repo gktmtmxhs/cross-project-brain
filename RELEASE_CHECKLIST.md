@@ -31,6 +31,9 @@ Use this before publishing the framework core.
 - rename path roots to generic locations
 - keep a product adapter migration map
 - provide an example brain layout
+- publish `neuronfs-<ref>` prebuilt release assets for the active `NEURONFS_REPO_REF`
+- include `.sha256` assets for every prebuilt archive
+- verify `bash scripts/cpb-publish-neuronfs-release.sh --dry-run` shows the expected matrix
 
 ## Docs
 
@@ -50,6 +53,7 @@ Use this before publishing the framework core.
 - prune tests pass
 - selective injection tests pass
 - install/hook patch flow documented
+- prebuilt install verifies checksums successfully
 
 ## Final Review
 

@@ -19,6 +19,8 @@ prefer_prebuilt="${NEURONFS_PREFER_PREBUILT:-1}"
 prebuilt_version="${NEURONFS_PREBUILT_VERSION:-$repo_ref}"
 prebuilt_base_url="${NEURONFS_PREBUILT_BASE_URL:-}"
 prebuilt_url="${NEURONFS_PREBUILT_URL:-}"
+require_prebuilt_checksum="${NEURONFS_PREBUILT_REQUIRE_CHECKSUM:-1}"
+prebuilt_checksum_url="${NEURONFS_PREBUILT_CHECKSUM_URL:-}"
 
 usage() {
   cat <<EOF
@@ -34,6 +36,8 @@ Environment overrides:
   NEURONFS_PREBUILT_VERSION  default: $prebuilt_version
   NEURONFS_PREBUILT_BASE_URL default: release URL for $prebuilt_version
   NEURONFS_PREBUILT_URL      explicit asset URL override
+  NEURONFS_PREBUILT_REQUIRE_CHECKSUM default: $require_prebuilt_checksum
+  NEURONFS_PREBUILT_CHECKSUM_URL     explicit checksum URL override
 EOF
 }
 
@@ -59,6 +63,27 @@ download_archive() {
   return 1
 }
 
+compute_sha256() {
+  local file_path="$1"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file_path" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file_path" | awk '{print $1}'
+    return 0
+  fi
+
+  return 1
+}
+
+read_expected_sha256() {
+  local checksum_path="$1"
+  awk 'match($0, /[0-9a-fA-F]{64}/) { print substr($0, RSTART, RLENGTH); exit }' "$checksum_path"
+}
+
 mkdir -p "$(dirname "$install_dir")"
 
 if [[ ! -d "$install_dir/.git" ]]; then
@@ -74,11 +99,12 @@ resolved_ref="$(git -C "$install_dir" rev-parse HEAD)"
 build_status="pending"
 build_error=""
 prebuilt_note=""
+prebuilt_checksum_note=""
 binary_name="neuronfs"
 binary_path="$install_dir/$binary_name"
 
 install_prebuilt_binary() {
-  local goos goarch asset_name archive_url tmpdir archive_path extracted_path
+  local goos goarch asset_name archive_url checksum_url checksum_name tmpdir archive_path checksum_path extracted_path expected_sha actual_sha
 
   if [[ "$prefer_prebuilt" != "1" ]]; then
     return 1
@@ -103,14 +129,51 @@ install_prebuilt_binary() {
     archive_url="$(cpdb_neuronfs_prebuilt_download_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"
   fi
 
+  if [[ -n "$prebuilt_checksum_url" ]]; then
+    checksum_url="$prebuilt_checksum_url"
+  else
+    checksum_url="$(cpdb_neuronfs_prebuilt_checksum_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"
+  fi
+
   tmpdir="$(mktemp -d)"
   archive_path="$tmpdir/$asset_name"
+  checksum_name="$(cpdb_neuronfs_prebuilt_checksum_name "$prebuilt_version" "$goos" "$goarch")"
+  checksum_path="$tmpdir/$checksum_name"
   extracted_path="$tmpdir/$binary_name"
 
   if ! download_archive "$archive_url" "$archive_path"; then
     build_error="prebuilt CLI download failed from $archive_url"
     rm -rf "$tmpdir"
     return 1
+  fi
+
+  if [[ "$require_prebuilt_checksum" == "1" ]]; then
+    if ! download_archive "$checksum_url" "$checksum_path"; then
+      build_error="prebuilt CLI checksum download failed from $checksum_url"
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
+    expected_sha="$(read_expected_sha256 "$checksum_path")"
+    if [[ -z "$expected_sha" ]]; then
+      build_error="prebuilt CLI checksum file did not contain a SHA-256 digest"
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
+    if ! actual_sha="$(compute_sha256 "$archive_path")"; then
+      build_error="no SHA-256 tool is available to verify the prebuilt CLI archive"
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
+    if [[ "$expected_sha" != "$actual_sha" ]]; then
+      build_error="prebuilt CLI checksum mismatch for $archive_url"
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
+    prebuilt_checksum_note="$checksum_url"
   fi
 
   if ! tar -xzf "$archive_path" -C "$tmpdir"; then
@@ -187,6 +250,10 @@ EOF
 
 if [[ -n "$prebuilt_note" ]]; then
   printf 'Prebuilt:    %s\n' "$prebuilt_note"
+fi
+
+if [[ -n "$prebuilt_checksum_note" ]]; then
+  printf 'Checksum:    verified via %s\n' "$prebuilt_checksum_note"
 fi
 
 cat <<EOF

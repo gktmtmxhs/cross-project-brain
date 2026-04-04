@@ -225,10 +225,12 @@ Use neutral names in the public version:
 ## Notes
 
 - The installer first tries to download a matching prebuilt `neuronfs` release asset for the current OS/arch.
+- When a prebuilt asset is used, the installer verifies it against the matching `.sha256` release asset before extracting it.
 - If no matching prebuilt is available and `go` is available, the installer builds the standalone `neuronfs` CLI locally.
 - If `go` is missing, the public installer tries to install it automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`).
 - If neither a prebuilt asset nor a usable local Go toolchain is available, the public installer falls back to degraded hook-only mode.
 - Hook-only mode still supports context injection, runtime rebuilds, personal repo sync, and `cpb status/apply`.
 - Full CPB autogrowth requires the standalone `neuronfs` binary. That now means either a published prebuilt NeuronFS CLI or a usable local Go toolchain.
 - Prebuilt release assets are generated with `bash scripts/cpb-build-neuronfs-prebuilt.sh --goos <goos> --goarch <goarch>` and published under the tag `neuronfs-<neuronfs-ref>`.
+- The full tagged release can be published with `bash scripts/cpb-publish-neuronfs-release.sh`.
 - The public install flow should stay usable even if the consumer repo uses its own skill system, as long as `skill -> role` mapping is provided.
