@@ -108,11 +108,11 @@ test("cpb doctor reports a ready desktop and laptop sync setup", () => {
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /Cross-Project Brain doctor/u);
-  assert.match(result.stdout, /\[ok\] gh auth: authenticated as cpb-gh/u);
-  assert.match(result.stdout, /\[ok\] personal repo upstream: origin\/main/u);
-  assert.match(result.stdout, /\[info\] project brain mode: local-only/u);
-  assert.match(result.stdout, /\[ok\] overall: ready/u);
+  assert.match(result.stdout, /CPB Status/u);
+  assert.match(result.stdout, /\[OK\] gh auth\s+authenticated as cpb-gh/u);
+  assert.match(result.stdout, /\[OK\] personal repo upstream\s+origin\/main/u);
+  assert.match(result.stdout, /\[INFO\] project brain mode\s+local-only/u);
+  assert.match(result.stdout, /\[OK\] overall\s+ready/u);
 });
 
 test("cpb doctor reports warnings when personal sync and hooks are not configured", () => {
@@ -128,7 +128,86 @@ test("cpb doctor reports warnings when personal sync and hooks are not configure
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[warn\] personal repo:/u);
-  assert.match(result.stdout, /\[warn\] hooks path:/u);
-  assert.match(result.stdout, /\[warn\] overall:/u);
+  assert.match(result.stdout, /\[WARN\] personal repo\s+/u);
+  assert.match(result.stdout, /\[WARN\] hooks path\s+/u);
+  assert.match(result.stdout, /\[WARN\] overall\s+/u);
+});
+
+test("cpb doctor treats hook-only NeuronFS installs as ready", () => {
+  const projectRepo = makeTempRepo("cpb-doctor-hook-only-");
+  const projectId = path.basename(projectRepo);
+  const personalRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-doctor-hook-personal-"));
+  const personalRemote = path.join(os.tmpdir(), `cpb-doctor-hook-personal-remote-${Date.now()}.git`);
+  const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-doctor-hook-gh-"));
+  const agentRoot = path.join(projectRepo, ".agent", "cross-project-brain", projectId);
+
+  run("git", ["init", "--bare", personalRemote], projectRepo);
+
+  run("git", ["init"], personalRoot);
+  run("git", ["config", "user.email", "cpb-personal@example.com"], personalRoot);
+  run("git", ["config", "user.name", "cpb-personal"], personalRoot);
+  fs.writeFileSync(path.join(personalRoot, "README.md"), "# personal\n", "utf8");
+  run("git", ["add", "README.md"], personalRoot);
+  run("git", ["commit", "-m", "init"], personalRoot);
+  run("git", ["branch", "-M", "main"], personalRoot);
+  run("git", ["remote", "add", "origin", personalRemote], personalRoot);
+  run("git", ["push", "-u", "origin", "main"], personalRoot);
+
+  fs.mkdirSync(path.join(projectRepo, "brains", "team-brain", "brain_v4"), { recursive: true });
+  fs.mkdirSync(path.join(personalRoot, "brains", "global-operators", "cpb-test", "brain_v4"), {
+    recursive: true,
+  });
+  fs.mkdirSync(path.join(personalRoot, "brains", "project-operators", "cpb-test", projectId, "brain_v4"), {
+    recursive: true,
+  });
+  fs.mkdirSync(path.join(agentRoot, "device-brain", "brain_v4"), { recursive: true });
+  fs.mkdirSync(path.join(agentRoot, "runtime-brain", "brain_v4"), { recursive: true });
+  fs.mkdirSync(path.join(personalRoot, "docs", "career", "operators", "cpb-test"), { recursive: true });
+
+  const hooksDir = path.join(projectRepo, ".githooks");
+  for (const hookName of ["post-merge", "post-checkout", "post-rewrite", "pre-push"]) {
+    writeExecutable(path.join(hooksDir, hookName), "#!/usr/bin/env bash\nexit 0\n");
+  }
+  run("git", ["config", "core.hooksPath", hooksDir], projectRepo);
+
+  fs.mkdirSync(path.join(projectRepo, ".tools", "neuronfs"), { recursive: true });
+
+  writeExecutable(
+    path.join(fakeBin, "gh"),
+    [
+      "#!/usr/bin/env bash",
+      'if [[ "$1" == "auth" && "$2" == "status" ]]; then exit 0; fi',
+      'if [[ "$1" == "api" && "$2" == "user" ]]; then printf "cpb-gh\\n"; exit 0; fi',
+      "exit 1",
+      "",
+    ].join("\n"),
+  );
+
+  const result = spawnSync("bash", [scriptPath], {
+    cwd: projectRepo,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `${fakeBin}:${process.env.PATH}`,
+      CPB_REPO_ROOT: projectRepo,
+      CPB_PERSONAL_REPO: personalRoot,
+      CPB_PROJECT_BRAIN: path.join(
+        personalRoot,
+        "brains",
+        "project-operators",
+        "cpb-test",
+        projectId,
+        "brain_v4",
+      ),
+      CPB_AGENT_ROOT: agentRoot,
+    },
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /NeuronFS\s+\[INFO\] hook-only mode/u);
+  assert.match(
+    result.stdout,
+    /\[INFO\] neuronfs cli\s+.+hook-only mode is active, Go is only needed for the standalone CLI/u,
+  );
+  assert.match(result.stdout, /Overall\s+\[OK\] ready/u);
 });

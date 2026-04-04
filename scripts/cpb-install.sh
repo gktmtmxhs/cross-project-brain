@@ -247,10 +247,19 @@ if [[ -n "$personal_repo" ]]; then
 fi
 
 if [[ "$install_neuronfs" -eq 1 ]]; then
-  CPB_REPO_ROOT="$target_repo" \
-  CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-  NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-  bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+  if command -v go >/dev/null 2>&1; then
+    CPB_REPO_ROOT="$target_repo" \
+    CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+  else
+    printf 'Go is not available; continuing with NeuronFS hook-only mode.\n'
+    CPB_REPO_ROOT="$target_repo" \
+    CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    NEURONFS_ALLOW_HOOK_ONLY=1 \
+    bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+  fi
 fi
 
 CPB_REPO_ROOT="$target_repo" \

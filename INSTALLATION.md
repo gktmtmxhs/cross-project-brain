@@ -224,6 +224,8 @@ Use neutral names in the public version:
 
 ## Notes
 
-- If `go` is available, the installer should build the NeuronFS CLI.
-- If `go` is missing, the installer should fail clearly unless hook-only mode was explicitly allowed.
+- If `go` is available, the installer builds the standalone `neuronfs` CLI.
+- If `go` is missing, the public installer now falls back to hook-only mode automatically.
+- Hook-only mode still supports the normal CPB workflow: hooks, runtime rebuilds, personal repo sync, and `cpb status/apply`.
+- `go` is only required when you want the standalone `neuronfs` binary itself.
 - The public install flow should stay usable even if the consumer repo uses its own skill system, as long as `skill -> role` mapping is provided.

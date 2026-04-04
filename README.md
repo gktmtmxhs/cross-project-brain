@@ -141,6 +141,8 @@ The installer is designed to set up, in one pass:
 - NeuronFS install and hook patch
 - first runtime brain rebuild
 
+If `go` is not installed, the installer still completes in hook-only mode. That is enough for the normal CPB workflow; `go` is only needed when you want the standalone `neuronfs` CLI binary.
+
 If you pass `--personal-repo`, the installer also assumes a recommended GitHub private repo name of `<github-username>/cpb-personal` and:
 
 - checks whether that repo exists when `gh` auth is available
