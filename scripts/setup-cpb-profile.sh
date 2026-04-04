@@ -9,9 +9,9 @@ source "$script_dir/cpb-paths.sh"
 usage() {
   cat <<EOF
 Usage:
-  bash scripts/setup-cpb-profile.sh [--repo-root <path>] profiles
-  bash scripts/setup-cpb-profile.sh [--repo-root <path>] status
-  bash scripts/setup-cpb-profile.sh [--repo-root <path>] apply <profile> [options]
+  cpb [--repo-root <path>] profiles
+  cpb [--repo-root <path>] status
+  cpb [--repo-root <path>] apply <profile> [options]
 
 Profiles:
   team-local      team/shared repo, project brain local-only under .agent/
@@ -27,10 +27,10 @@ Options for apply:
   --skip-rebuild                 skip runtime brain rebuild
 
 Examples:
-  bash scripts/setup-cpb-profile.sh profiles
-  bash scripts/setup-cpb-profile.sh status
-  bash scripts/setup-cpb-profile.sh apply team-local
-  bash scripts/setup-cpb-profile.sh apply team-personal --personal-repo "\$HOME/.cpb-personal"
+  cpb profiles
+  cpb status
+  cpb apply team-local
+  cpb apply team-personal --personal-repo "\$HOME/.cpb-personal"
 EOF
 }
 

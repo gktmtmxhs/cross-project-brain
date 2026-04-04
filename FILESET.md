@@ -6,6 +6,7 @@ This file defines what should move into the open-source core repo and what shoul
 
 Scripts:
 
+- `bin/cpb`
 - `scripts/cpb-install.sh`
 - `scripts/cpb-install-neuronfs.sh`
 - `scripts/cpb-doctor.sh`
@@ -30,6 +31,7 @@ Tests:
 - `tests/cpb-doctor.test.mjs`
 - `tests/cpb-finish-check.test.mjs`
 - `tests/cpb-log-learning.test.mjs`
+- `tests/cpb-cli-wrapper.test.mjs`
 - `tests/cpb-sync-personal-repo.test.mjs`
 
 Docs:

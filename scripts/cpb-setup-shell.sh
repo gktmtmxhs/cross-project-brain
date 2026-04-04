@@ -35,17 +35,18 @@ marker_start="# Cross-Project Brain auto-env"
 marker_end="# End Cross-Project Brain auto-env"
 temp_file="$(mktemp)"
 repo_root_escaped="$(shell_escape "$repo_root")"
-profile_script_escaped="$(shell_escape "$repo_root/scripts/setup-cpb-profile.sh")"
+bin_dir_escaped="$(shell_escape "$repo_root/bin")"
 
 block_contents="$(cat <<EOF
 $marker_start
 if [ -f ${repo_root_escaped}/scripts/project-brain-autoenv.bash ]; then
   . ${repo_root_escaped}/scripts/project-brain-autoenv.bash
 fi
-if [ -f ${profile_script_escaped} ]; then
-  cpb() {
-    bash ${profile_script_escaped} "\$@"
-  }
+if [ -d ${bin_dir_escaped} ]; then
+  case ":\$PATH:" in
+    *:${bin_dir_escaped}:*) ;;
+    *) export PATH=${bin_dir_escaped}:\$PATH ;;
+  esac
 fi
 $marker_end
 EOF

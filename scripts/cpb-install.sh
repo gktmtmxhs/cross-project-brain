@@ -171,7 +171,9 @@ ensure_brain_layout() {
     "$brain_root/prefrontal"
 }
 
-mkdir -p "$target_repo/scripts" "$target_repo/.githooks" "$target_repo/brains"
+mkdir -p "$target_repo/bin" "$target_repo/scripts" "$target_repo/.githooks" "$target_repo/brains"
+
+copy_file "$framework_root/bin/cpb" "$target_repo/bin/cpb"
 
 for script_name in \
   setup-cpb-profile.sh \
@@ -287,6 +289,7 @@ CPB bootstrap complete.
 Target repo: $target_repo
 
 Installed:
+  - bin/cpb
   - scripts/cpb-*
   - AGENTS.md
   - CLAUDE.md
@@ -309,7 +312,7 @@ cat <<EOF
 
 Next steps:
   1. Open a new shell or run: source ~/.bashrc
-  2. Run: bash scripts/setup-cpb-profile.sh status
+  2. Run: cpb status
   3. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
   4. Start working normally
 EOF
