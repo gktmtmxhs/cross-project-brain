@@ -58,7 +58,7 @@ Templates:
 
 - product app code
 - current project `AGENTS.md` business details
-- current project `.codex/skills/muinone-*`
+- current project `.codex/skills/<product>-*`
 - tracked learned lesson contents under:
   - `brains/project-operators/`
   - `brains/global-operators/`

@@ -66,6 +66,10 @@ expand_path() {
   printf '%s\n' "$value"
 }
 
+shell_escape() {
+  printf '%q' "$1"
+}
+
 can_prompt_tty() {
   [[ -r /dev/tty && -w /dev/tty ]]
 }
@@ -417,20 +421,24 @@ marker_start="# Cross-Project Brain personal repo"
 marker_end="# End Cross-Project Brain personal repo"
 autoenv_start="# Cross-Project Brain auto-env"
 temp_file="$(mktemp)"
+personal_repo_escaped="$(shell_escape "$personal_repo")"
+global_brain_escaped="$(shell_escape "$global_brain")"
+career_docs_root_escaped="$(shell_escape "$career_docs_root")"
 
 block_contents="$(cat <<EOF
 $marker_start
-export CPB_PERSONAL_REPO="$personal_repo"
-export CPB_GLOBAL_BRAIN="$global_brain"
-export CPB_CAREER_DOCS_ROOT="$career_docs_root"
+export CPB_PERSONAL_REPO=${personal_repo_escaped}
+export CPB_GLOBAL_BRAIN=${global_brain_escaped}
+export CPB_CAREER_DOCS_ROOT=${career_docs_root_escaped}
 export CPB_AUTO_PULL_PERSONAL=1
 export CPB_AUTO_PUSH_PERSONAL=1
 EOF
 )"
 
 if [[ -n "$project_brain_path" ]]; then
+  project_brain_path_escaped="$(shell_escape "$project_brain_path")"
   block_contents+="
-export CPB_PROJECT_BRAIN=\"$project_brain_path\""
+export CPB_PROJECT_BRAIN=${project_brain_path_escaped}"
 fi
 
 block_contents+="

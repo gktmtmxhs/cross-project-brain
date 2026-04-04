@@ -26,15 +26,20 @@ if [[ -z "$repo_root" ]]; then
   repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
+shell_escape() {
+  printf '%q' "$1"
+}
+
 bashrc="$HOME/.bashrc"
 marker_start="# Cross-Project Brain auto-env"
 marker_end="# End Cross-Project Brain auto-env"
 temp_file="$(mktemp)"
+repo_root_escaped="$(shell_escape "$repo_root")"
 
 block_contents="$(cat <<EOF
 $marker_start
-if [ -f "$repo_root/scripts/project-brain-autoenv.bash" ]; then
-  . "$repo_root/scripts/project-brain-autoenv.bash"
+if [ -f ${repo_root_escaped}/scripts/project-brain-autoenv.bash ]; then
+  . ${repo_root_escaped}/scripts/project-brain-autoenv.bash
 fi
 $marker_end
 EOF
