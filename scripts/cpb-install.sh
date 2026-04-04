@@ -179,6 +179,7 @@ for script_name in \
   setup-cpb-profile.sh \
   cpb-install.sh \
   cpb-install-neuronfs.sh \
+  cpb-completion.bash \
   cpb-doctor.sh \
   cpb-patch-neuronfs-hook.mjs \
   cpb-selective-injection.cjs \

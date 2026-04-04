@@ -9,6 +9,7 @@ Scripts:
 - `bin/cpb`
 - `scripts/cpb-install.sh`
 - `scripts/cpb-install-neuronfs.sh`
+- `scripts/cpb-completion.bash`
 - `scripts/cpb-doctor.sh`
 - `scripts/cpb-rebuild-runtime-brain.sh`
 - `scripts/cpb-refresh-after-git.sh`
@@ -32,6 +33,7 @@ Tests:
 - `tests/cpb-finish-check.test.mjs`
 - `tests/cpb-log-learning.test.mjs`
 - `tests/cpb-cli-wrapper.test.mjs`
+- `tests/cpb-completion.test.mjs`
 - `tests/cpb-sync-personal-repo.test.mjs`
 
 Docs:

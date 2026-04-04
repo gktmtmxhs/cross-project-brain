@@ -36,6 +36,7 @@ marker_end="# End Cross-Project Brain auto-env"
 temp_file="$(mktemp)"
 repo_root_escaped="$(shell_escape "$repo_root")"
 bin_dir_escaped="$(shell_escape "$repo_root/bin")"
+completion_script_escaped="$(shell_escape "$repo_root/scripts/cpb-completion.bash")"
 
 block_contents="$(cat <<EOF
 $marker_start
@@ -47,6 +48,9 @@ if [ -d ${bin_dir_escaped} ]; then
     *:${bin_dir_escaped}:*) ;;
     *) export PATH=${bin_dir_escaped}:\$PATH ;;
   esac
+fi
+if [ -f ${completion_script_escaped} ]; then
+  . ${completion_script_escaped}
 fi
 $marker_end
 EOF
@@ -78,4 +82,5 @@ Open a new shell or run:
 After that you can use:
   cpb status
   cpb apply team-personal
+  cpb <TAB>
 EOF
