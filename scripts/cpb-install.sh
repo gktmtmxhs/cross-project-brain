@@ -98,8 +98,8 @@ resolve_framework_root() {
 }
 
 framework_root="$(resolve_framework_root)"
-target_repo="$(cd "$target_repo" && pwd)"
 mkdir -p "$target_repo"
+target_repo="$(cd "$target_repo" && pwd)"
 
 copy_file() {
   local source="$1"
@@ -174,6 +174,7 @@ ensure_brain_layout() {
 mkdir -p "$target_repo/scripts" "$target_repo/.githooks" "$target_repo/brains"
 
 for script_name in \
+  setup-cpb-profile.sh \
   cpb-install.sh \
   cpb-install-neuronfs.sh \
   cpb-doctor.sh \
@@ -308,7 +309,7 @@ cat <<EOF
 
 Next steps:
   1. Open a new shell or run: source ~/.bashrc
-  2. Run: bash scripts/cpb-doctor.sh
+  2. Run: bash scripts/setup-cpb-profile.sh status
   3. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
   4. Start working normally
 EOF

@@ -91,6 +91,7 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 - `CPB_PROJECT_BRAIN`
   - 개인 repo나 solo repo에서는 repo-tracked를 써도 됨
   - 팀/shared repo에서는 `.agent/...` 아래 local-only 경로를 권장
+  - 다만 팀 repo를 더럽히지 않으면서도 내 데스크탑/랩탑 간 프로젝트 전용 학습을 같이 들고 가고 싶다면, personal private repo 안의 프로젝트 전용 경로를 쓰는 것도 가능
 - `CPB_CAREER_DOCS_ROOT`
   - 내 private GitHub repo 안의 `docs/career/operators/<github-username>`
 
@@ -99,7 +100,7 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 | 구분 | 들어가는 것 | 어떻게 sync 되나 | 팀원에게 보이나 |
 | --- | --- | --- | --- |
 | 현재 프로젝트 repo | 코드, `AGENTS.md`, `CLAUDE.md`, `scripts/cpb-*`, `.githooks`, `team-brain`, shared 승격 문서 | 현재 프로젝트 git remote로 `commit/push/pull` | 보임 |
-| 내 개인 private GitHub repo | `global brain`, 개인 career docs, 개인 CPB 자산 | 내 private GitHub repo로 `commit/push/pull` | 안 보이게 운영 가능 |
+| 내 개인 private GitHub repo | `global brain`, 개인 career docs, 개인 CPB 자산, 필요하면 개인용 `project brain` overlay | 내 private GitHub repo로 `commit/push/pull` | 안 보이게 운영 가능 |
 | 현재 장비 로컬 | `device brain`, `runtime brain`, 필요하면 local-only `project brain` | git 없음 | 안 보임 |
 
 쉽게 말하면:
@@ -112,6 +113,7 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 
 - 개인/solo repo에서는 `project brain`도 repo-tracked로 두어도 됩니다.
 - 팀/shared repo에서는 `project brain`을 local-only로 두는 편이 안전합니다.
+- 다만 팀/shared repo에서도, 프로젝트 전용 학습을 내 장비들끼리만 공유하고 싶다면 `project brain`을 personal private repo 안에 둘 수 있습니다.
 - 그래서 팀 프로젝트에서 CPB가 문제를 만들지 않게 하려면, 팀 repo에는 공용 자산만 남기고 개인 자산은 private repo나 로컬로 분리하는 것이 핵심입니다.
 
 ## 빠른 설치
@@ -168,6 +170,45 @@ bash scripts/cpb-doctor.sh
 즉 초기 설치 이후에는 보통 **평소처럼 현재 프로젝트 repo에서 `git pull` / `git push`만 쓰면 됩니다.**
 
 단, 데스크탑/랩탑 간 실제 동기화는 **개인 private repo에 git remote upstream이 연결돼 있을 때** 완전히 동작합니다.
+
+## 환경 프로필 wrapper
+
+공개 CPB 코어는 여전히 저수준 스크립트를 기본으로 제공합니다.
+
+- `cpb-install.sh`
+- `cpb-setup-personal-repo.sh`
+- `cpb-setup-git-hooks.sh`
+- `cpb-setup-shell.sh`
+- `cpb-doctor.sh`
+
+그리고 이제 공용 프로필 wrapper도 같이 제공합니다.
+
+- `setup-cpb-profile.sh`
+
+이 wrapper는 아래 같은 실제 운영 모드를 바로 고를 수 있게 해줍니다.
+
+- 팀 공유 repo + project brain 로컬 유지
+- 팀 공유 repo + project brain 개인 private repo 공유
+- 개인 repo + project brain 현재 repo 추적
+- 개인 repo + project brain 개인 private repo 공유
+
+내장 프로필은 다음과 같습니다.
+
+- `team-local`
+- `team-personal`
+- `solo-tracked`
+- `solo-personal`
+
+명령 예시는 이런 형태입니다.
+
+```bash
+bash scripts/setup-cpb-profile.sh profiles
+bash scripts/setup-cpb-profile.sh status
+bash scripts/setup-cpb-profile.sh apply team-local
+bash scripts/setup-cpb-profile.sh apply team-personal
+```
+
+소비자 repo가 원하면 이 위에 더 짧은 product alias를 얹을 수는 있지만, 이제 profile 기반 초기 설정과 상태 확인 자체는 공개 CPB 코어만으로도 됩니다.
 
 ## 설치 후 저장소 구조
 

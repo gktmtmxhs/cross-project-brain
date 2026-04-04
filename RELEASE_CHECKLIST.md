@@ -57,3 +57,15 @@ Use this before publishing the framework core.
 - no real lesson history ships
 - no product-specific skills ship
 - install steps work in a clean repo
+
+## Monorepo Extraction
+
+- from the product repo, verify the subtree is ready:
+  - `bash scripts/export-cpb-core.sh status`
+- if you need a working-tree snapshot of uncommitted CPB changes:
+  - `bash scripts/export-cpb-core.sh snapshot --target /tmp/cpb-core-working`
+- before using a history-preserving subtree split, commit the CPB core changes first
+- then create a split branch:
+  - `bash scripts/export-cpb-core.sh subtree-branch --branch cpb-core-export`
+- push that branch to the new public or private CPB repo as `main`
+- after the new repo is live, replace product-repo embedded core ownership with consumer-wrapper ownership

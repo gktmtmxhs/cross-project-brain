@@ -82,6 +82,30 @@ It shows:
 - where `team/global/project/device/runtime` brains currently live
 - whether NeuronFS is installed
 
+## Profile-Based Setup Wrapper
+
+The public CPB core still exposes the low-level primitives directly, and now also ships a generic profile wrapper for common environment shapes.
+
+Supported profiles:
+
+- shared/team repo with local-only `project brain`
+- shared/team repo with personal-private-repo `project brain`
+- solo repo with tracked `project brain`
+- solo repo with personal-private-repo `project brain`
+
+Example interface:
+
+```bash
+bash scripts/setup-cpb-profile.sh profiles
+bash scripts/setup-cpb-profile.sh status
+bash scripts/setup-cpb-profile.sh apply team-local
+bash scripts/setup-cpb-profile.sh apply team-personal
+bash scripts/setup-cpb-profile.sh apply solo-tracked
+bash scripts/setup-cpb-profile.sh apply solo-personal
+```
+
+Consumer repos can still add a thinner alias if they want shorter product-specific commands, but the public-core wrapper is enough for first-run setup and state checks on its own.
+
 ## Recommended Real-World Layout
 
 For real usage, especially when you move between machines or work in team repos, the safest layout is:
@@ -104,7 +128,7 @@ In practice, that usually means:
 - use a personal private GitHub repo named `<github-username>/cpb-personal`
 - set `CPB_PERSONAL_REPO` to a checked-out path inside your private GitHub repo
 - set `CPB_GLOBAL_BRAIN` to a checked-out path inside your personal private GitHub repo
-- for shared/team repos, consider setting `CPB_PROJECT_BRAIN` to a local-only path under `.agent/...`
+- for shared/team repos, consider setting `CPB_PROJECT_BRAIN` either to a local-only path under `.agent/...` or to a project-specific path inside your personal private repo if you want your own multi-device sync without pushing project-specific lessons into the team repo
 - set `CPB_CAREER_DOCS_ROOT` to your personal private GitHub repo if you want versioned career docs without mixing them into the team repo
 
 ## Files The Installer Creates In A Consumer Repo

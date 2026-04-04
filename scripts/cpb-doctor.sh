@@ -264,5 +264,6 @@ fi
 if [[ -z "${CPB_PERSONAL_REPO:-}" ]]; then
   line
   line "Suggested next step"
-  line "  bash scripts/cpb-setup-personal-repo.sh \"\$HOME/.cpb-personal\" --shared-repo"
+  line "  bash scripts/setup-cpb-profile.sh profiles"
+  line "  bash scripts/setup-cpb-profile.sh apply team-local"
 fi

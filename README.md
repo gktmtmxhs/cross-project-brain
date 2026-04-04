@@ -90,7 +90,7 @@ Typical settings:
   - a path inside your private GitHub repo checkout, such as `brains/global-operators/<github-username>/brain_v4`
 - `CPB_PROJECT_BRAIN`
   - repo-tracked is fine for solo repos
-  - for shared/team repos, prefer a local-only path under `.agent/...`
+  - for shared/team repos, prefer either a local-only path under `.agent/...` or a project-specific path inside your personal private repo when you want your own multi-device sync without polluting the team repo
 - `CPB_CAREER_DOCS_ROOT`
   - `docs/career/operators/<github-username>` inside your private GitHub repo checkout
 
@@ -99,7 +99,7 @@ Typical settings:
 | Layer | What belongs there | How it syncs | Visible to teammates |
 | --- | --- | --- | --- |
 | Current project repo | code, `AGENTS.md`, `CLAUDE.md`, `scripts/cpb-*`, `.githooks`, `team-brain`, shared published docs | normal project `commit/push/pull` | yes |
-| Your personal private GitHub repo | `global brain`, personal career docs, personal CPB assets | private repo `commit/push/pull` | no, if kept private |
+| Your personal private GitHub repo | `global brain`, personal career docs, personal CPB assets, optionally a personal `project brain` overlay | private repo `commit/push/pull` | no, if kept private |
 | Local-only state | `device brain`, `runtime brain`, optionally a local-only `project brain` | no git sync | no |
 
 In short:
@@ -112,6 +112,7 @@ Important:
 
 - in solo repos, a repo-tracked `project brain` is usually fine
 - in shared/team repos, a local-only `project brain` is usually safer
+- if one person wants project-specific learning to follow them across desktop/laptop without landing in the team repo, a personal-private-repo `project brain` is also a valid mode
 - that separation is what lets CPB help one person across projects without polluting a team repo
 
 ## Quick Install
@@ -167,6 +168,45 @@ After that, the intended day-to-day flow is just normal git usage in the current
 In practice, that means after initial setup you usually just keep using normal `git pull` / `git push` in the project repo.
 
 For real desktop/laptop sync, your personal private repo still needs a git remote upstream.
+
+## Profile-Based Setup Wrapper
+
+The public CPB core still ships the low-level building blocks:
+
+- `cpb-install.sh`
+- `cpb-setup-personal-repo.sh`
+- `cpb-setup-git-hooks.sh`
+- `cpb-setup-shell.sh`
+- `cpb-doctor.sh`
+
+It now also ships one generic profile wrapper:
+
+- `setup-cpb-profile.sh`
+
+That wrapper covers the common real-world deployment shapes:
+
+- shared team repo + local-only project brain
+- shared team repo + personal multi-device project brain
+- solo repo + tracked project brain
+- solo repo + personal multi-device project brain
+
+Built-in profiles:
+
+- `team-local`
+- `team-personal`
+- `solo-tracked`
+- `solo-personal`
+
+Example commands:
+
+```bash
+bash scripts/setup-cpb-profile.sh profiles
+bash scripts/setup-cpb-profile.sh status
+bash scripts/setup-cpb-profile.sh apply team-local
+bash scripts/setup-cpb-profile.sh apply team-personal
+```
+
+Consumer repos can still add a thin alias on top if they want shorter product-specific commands, but the public CPB core is now self-sufficient for profile-based setup and state checks.
 
 ## What Gets Created After Install
 

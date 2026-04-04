@@ -23,11 +23,14 @@ Scripts:
 - `scripts/cpb-paths.mjs`
 - `scripts/cpb-paths.sh`
 - `scripts/project-brain-autoenv.bash`
+- `scripts/setup-cpb-profile.sh`
 
 Tests:
 
 - `tests/cpb-doctor.test.mjs`
+- `tests/cpb-finish-check.test.mjs`
 - `tests/cpb-log-learning.test.mjs`
+- `tests/cpb-sync-personal-repo.test.mjs`
 
 Docs:
 
@@ -57,8 +60,8 @@ Templates:
 - current project `AGENTS.md` business details
 - current project `.codex/skills/muinone-*`
 - tracked learned lesson contents under:
-  - `tools/neuronfs-pilot/operators/`
-  - `tools/neuronfs-pilot/global-operators/`
+  - `brains/project-operators/`
+  - `brains/global-operators/`
 - `.agent/`
 - `.tools/`
 - any company-specific docs or policies
@@ -70,3 +73,4 @@ Templates:
 - product-specific docs
 - product-specific baseline team rules
 - product-specific examples
+- monorepo split/export helpers such as `scripts/export-cpb-core.sh`

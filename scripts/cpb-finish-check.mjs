@@ -38,6 +38,14 @@ function runGit(args) {
   return result.stdout;
 }
 
+function isGitWorktree() {
+  const result = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  return result.status === 0;
+}
+
 function shouldIgnoreRelPath(relPath) {
   if (!relPath) {
     return true;
@@ -247,6 +255,11 @@ if (allowSharedIndex >= 0 && !allowSharedReason) {
 
 if (args.includes("-h") || args.includes("--help")) {
   usage();
+  process.exit(0);
+}
+
+if (!isGitWorktree()) {
+  process.stdout.write("CPB finish check skipped: repo is not a git worktree.\n");
   process.exit(0);
 }
 
