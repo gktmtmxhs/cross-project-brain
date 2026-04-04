@@ -24,6 +24,7 @@ Options for apply:
   --personal-repo <path>         default: \$HOME/.cpb-personal
   --create-remote <ask|never|always>
   --skip-install                 skip NeuronFS runtime install/update
+  --skip-go-install              do not auto-install Go before building NeuronFS CLI
   --skip-rebuild                 skip runtime brain rebuild
 
 Examples:
@@ -181,6 +182,7 @@ operator=""
 personal_repo="$HOME/.cpb-personal"
 create_remote_mode=""
 skip_install=0
+auto_install_go=1
 skip_rebuild=0
 shared_repo=0
 project_brain_mode=""
@@ -223,6 +225,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-install)
       skip_install=1
+      shift
+      ;;
+    --skip-go-install)
+      auto_install_go=0
       shift
       ;;
     --skip-rebuild)
@@ -272,6 +278,12 @@ bash "$script_dir/cpb-setup-git-hooks.sh" --repo-root "$repo_root"
 bash "$script_dir/cpb-setup-shell.sh" --repo-root "$repo_root"
 
 if [[ "$skip_install" -eq 0 ]]; then
+  if ! command -v go >/dev/null 2>&1 && [[ "$auto_install_go" -eq 1 ]]; then
+    if ! bash "$script_dir/cpb-install-go.sh"; then
+      printf 'Automatic Go install did not complete; continuing with degraded NeuronFS hook-only mode.\n'
+    fi
+  fi
+
   if command -v go >/dev/null 2>&1; then
     CPB_REPO_ROOT="$repo_root" \
     CPB_OPERATOR="$operator" \
@@ -279,7 +291,11 @@ if [[ "$skip_install" -eq 0 ]]; then
     CPB_PROJECT_BRAIN="$project_brain_path" \
     bash "$script_dir/cpb-install-neuronfs.sh"
   else
-    printf 'Go is not available; installing NeuronFS in degraded hook-only mode (autogrowth disabled).\n'
+    if [[ "$auto_install_go" -eq 1 ]]; then
+      printf 'Go is still not available; installing NeuronFS in degraded hook-only mode (autogrowth disabled).\n'
+    else
+      printf 'Go auto-install was skipped; installing NeuronFS in degraded hook-only mode (autogrowth disabled).\n'
+    fi
     CPB_REPO_ROOT="$repo_root" \
     CPB_OPERATOR="$operator" \
     CPB_PERSONAL_REPO="$personal_repo" \

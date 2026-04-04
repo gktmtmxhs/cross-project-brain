@@ -5,6 +5,7 @@ target_repo="$PWD"
 force=0
 setup_shell=1
 install_neuronfs=1
+auto_install_go=1
 start_autogrowth=1
 personal_repo=""
 shared_repo=0
@@ -12,7 +13,7 @@ temp_framework_root=""
 
 usage() {
   cat <<EOF
-Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth]
+Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth] [--skip-go-install]
 
 Examples:
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/.cpb-personal" --shared-repo
@@ -49,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-neuronfs)
       install_neuronfs=0
+      shift
+      ;;
+    --skip-go-install)
+      auto_install_go=0
       shift
       ;;
     --no-autogrowth)
@@ -178,6 +183,7 @@ copy_file "$framework_root/bin/cpb" "$target_repo/bin/cpb"
 for script_name in \
   setup-cpb-profile.sh \
   cpb-install.sh \
+  cpb-install-go.sh \
   cpb-install-neuronfs.sh \
   cpb-completion.bash \
   cpb-doctor.sh \
@@ -247,13 +253,23 @@ if [[ -n "$personal_repo" ]]; then
 fi
 
 if [[ "$install_neuronfs" -eq 1 ]]; then
+  if ! command -v go >/dev/null 2>&1 && [[ "$auto_install_go" -eq 1 ]]; then
+    if ! bash "$target_repo/scripts/cpb-install-go.sh"; then
+      printf 'Automatic Go install did not complete; continuing with degraded NeuronFS hook-only mode.\n'
+    fi
+  fi
+
   if command -v go >/dev/null 2>&1; then
     CPB_REPO_ROOT="$target_repo" \
     CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
     NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
     bash "$target_repo/scripts/cpb-install-neuronfs.sh"
   else
-    printf 'Go is not available; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+    if [[ "$auto_install_go" -eq 1 ]]; then
+      printf 'Go is still not available; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+    else
+      printf 'Go auto-install was skipped; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+    fi
     CPB_REPO_ROOT="$target_repo" \
     CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
     NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \

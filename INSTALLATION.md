@@ -225,7 +225,8 @@ Use neutral names in the public version:
 ## Notes
 
 - If `go` is available, the installer builds the standalone `neuronfs` CLI.
-- If `go` is missing, the public installer now falls back to degraded hook-only mode automatically.
+- If `go` is missing, the public installer first tries to install it automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`).
+- If that automatic Go install path is unavailable or fails, the public installer falls back to degraded hook-only mode.
 - Hook-only mode still supports context injection, runtime rebuilds, personal repo sync, and `cpb status/apply`.
 - Full CPB autogrowth requires the standalone `neuronfs` binary. Today that means installing `go` or providing a prebuilt NeuronFS CLI.
 - The public install flow should stay usable even if the consumer repo uses its own skill system, as long as `skill -> role` mapping is provided.
