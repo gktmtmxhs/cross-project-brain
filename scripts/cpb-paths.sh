@@ -71,6 +71,6 @@ cpdb_export_paths() {
   export CPB_DEVICE_BRAIN="${CPB_DEVICE_BRAIN:-$agent_root/device-brain/brain_v4}"
   export CPB_RUNTIME_BRAIN="${CPB_RUNTIME_BRAIN:-$agent_root/runtime-brain/brain_v4}"
   export CPB_CAREER_DOCS_ROOT="${CPB_CAREER_DOCS_ROOT:-$career_docs_root_default}"
-  export CPB_NEURONFS_INSTALL_DIR="${CPB_NEURONFS_INSTALL_DIR:-$repo_root/.tools/neuronfs}"
+  export CPB_NEURONFS_INSTALL_DIR="${CPB_NEURONFS_INSTALL_DIR:-${NEURONFS_INSTALL_DIR:-$repo_root/.tools/neuronfs}}"
   export NEURONFS_INSTALL_DIR="$CPB_NEURONFS_INSTALL_DIR"
 }

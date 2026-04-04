@@ -4,6 +4,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "$script_dir/cpb-paths.sh"
+# shellcheck disable=SC1091
+source "$script_dir/cpb-neuronfs-prebuilt.sh"
 cpdb_export_paths
 
 repo_root="$CPB_REPO_ROOT"
@@ -13,17 +15,25 @@ repo_url="${NEURONFS_REPO_URL:-https://github.com/rhino-acoustic/NeuronFS.git}"
 repo_branch="${NEURONFS_REPO_BRANCH:-main}"
 repo_ref="${NEURONFS_REPO_REF:-970e0cd}"
 allow_hook_only="${NEURONFS_ALLOW_HOOK_ONLY:-0}"
+prefer_prebuilt="${NEURONFS_PREFER_PREBUILT:-1}"
+prebuilt_version="${NEURONFS_PREBUILT_VERSION:-$repo_ref}"
+prebuilt_base_url="${NEURONFS_PREBUILT_BASE_URL:-}"
+prebuilt_url="${NEURONFS_PREBUILT_URL:-}"
 
 usage() {
   cat <<EOF
 Usage: bash scripts/cpb-install-neuronfs.sh
 
 Environment overrides:
-  NEURONFS_INSTALL_DIR      default: $install_dir_default
-  NEURONFS_REPO_URL         default: $repo_url
-  NEURONFS_REPO_BRANCH      default: $repo_branch
-  NEURONFS_REPO_REF         default: $repo_ref
-  NEURONFS_ALLOW_HOOK_ONLY  default: $allow_hook_only
+  NEURONFS_INSTALL_DIR       default: $install_dir_default
+  NEURONFS_REPO_URL          default: $repo_url
+  NEURONFS_REPO_BRANCH       default: $repo_branch
+  NEURONFS_REPO_REF          default: $repo_ref
+  NEURONFS_ALLOW_HOOK_ONLY   default: $allow_hook_only
+  NEURONFS_PREFER_PREBUILT   default: $prefer_prebuilt
+  NEURONFS_PREBUILT_VERSION  default: $prebuilt_version
+  NEURONFS_PREBUILT_BASE_URL default: release URL for $prebuilt_version
+  NEURONFS_PREBUILT_URL      explicit asset URL override
 EOF
 }
 
@@ -31,6 +41,23 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
 fi
+
+download_archive() {
+  local url="$1"
+  local dest="$2"
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url" -o "$dest"
+    return 0
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -qO "$dest" "$url"
+    return 0
+  fi
+
+  return 1
+}
 
 mkdir -p "$(dirname "$install_dir")"
 
@@ -46,20 +73,86 @@ main_head="$(git -C "$install_dir" rev-parse "origin/$repo_branch")"
 resolved_ref="$(git -C "$install_dir" rev-parse HEAD)"
 build_status="pending"
 build_error=""
+prebuilt_note=""
+binary_name="neuronfs"
+binary_path="$install_dir/$binary_name"
 
-if command -v go >/dev/null 2>&1; then
-  if (
-    cd "$install_dir/runtime"
-    go build -o ../neuronfs .
-  ); then
-    build_status="cli build ok"
-  else
-    build_status="cli build failed"
-    build_error="go build failed in $install_dir/runtime"
+install_prebuilt_binary() {
+  local goos goarch asset_name archive_url tmpdir archive_path extracted_path
+
+  if [[ "$prefer_prebuilt" != "1" ]]; then
+    return 1
   fi
-else
-  build_status="cli build skipped"
-  build_error="go is not installed"
+
+  if ! goos="$(cpdb_detect_prebuilt_goos)"; then
+    build_error="prebuilt CLI unavailable: unsupported operating system for this installer host"
+    return 1
+  fi
+
+  if ! goarch="$(cpdb_detect_prebuilt_goarch)"; then
+    build_error="prebuilt CLI unavailable: unsupported CPU architecture for this installer host"
+    return 1
+  fi
+
+  binary_name="$(cpdb_neuronfs_binary_name "$goos")"
+  asset_name="$(cpdb_neuronfs_prebuilt_asset_name "$prebuilt_version" "$goos" "$goarch")"
+
+  if [[ -n "$prebuilt_url" ]]; then
+    archive_url="$prebuilt_url"
+  else
+    archive_url="$(cpdb_neuronfs_prebuilt_download_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"
+  fi
+
+  tmpdir="$(mktemp -d)"
+  archive_path="$tmpdir/$asset_name"
+  extracted_path="$tmpdir/$binary_name"
+
+  if ! download_archive "$archive_url" "$archive_path"; then
+    build_error="prebuilt CLI download failed from $archive_url"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+
+  if ! tar -xzf "$archive_path" -C "$tmpdir"; then
+    build_error="prebuilt CLI archive could not be extracted from $archive_url"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+
+  if [[ ! -f "$extracted_path" ]]; then
+    build_error="prebuilt CLI archive did not contain $binary_name"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+
+  install -m 0755 "$extracted_path" "$install_dir/$binary_name"
+  binary_path="$install_dir/$binary_name"
+  build_status="cli prebuilt ok"
+  prebuilt_note="$archive_url"
+  rm -rf "$tmpdir"
+  return 0
+}
+
+if ! install_prebuilt_binary; then
+  binary_name="neuronfs"
+  binary_path="$install_dir/$binary_name"
+
+  if command -v go >/dev/null 2>&1; then
+    if (
+      cd "$install_dir/runtime"
+      go build -o ../neuronfs .
+    ); then
+      build_status="cli build ok"
+    else
+      build_status="cli build failed"
+      build_error="go build failed in $install_dir/runtime"
+    fi
+  elif [[ -n "$build_error" ]]; then
+    build_status="cli prebuilt unavailable"
+  else
+    build_status="cli build skipped"
+    build_error="go is not installed"
+  fi
 fi
 
 hook_file="$install_dir/runtime/v4-hook.cjs"
@@ -70,7 +163,6 @@ else
   exit 1
 fi
 
-binary_path="$install_dir/neuronfs"
 if [[ ! -x "$binary_path" ]]; then
   if [[ "$allow_hook_only" == "1" ]]; then
     build_status="$build_status; hook-only mode allowed"
@@ -79,8 +171,8 @@ if [[ ! -x "$binary_path" ]]; then
     if [[ -n "$build_error" ]]; then
       echo "Reason: $build_error" >&2
     fi
-    echo "Install Go and rerun bash scripts/cpb-install-neuronfs.sh, or set NEURONFS_ALLOW_HOOK_ONLY=1 for a hook-only install." >&2
-    exit 1
+    echo "Install Go, publish/provide a prebuilt NeuronFS CLI, and rerun bash scripts/cpb-install-neuronfs.sh, or set NEURONFS_ALLOW_HOOK_ONLY=1 for a hook-only install." >&2
+    exit 2
   fi
 fi
 
@@ -91,6 +183,13 @@ Install dir: $install_dir
 Main head:   $main_head
 Repo ref:    $resolved_ref
 Build:       $build_status
+EOF
+
+if [[ -n "$prebuilt_note" ]]; then
+  printf 'Prebuilt:    %s\n' "$prebuilt_note"
+fi
+
+cat <<EOF
 
 Expected paths:
   Hook:   $install_dir/runtime/v4-hook.cjs

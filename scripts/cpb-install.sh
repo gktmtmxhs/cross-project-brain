@@ -185,6 +185,8 @@ for script_name in \
   cpb-install.sh \
   cpb-install-go.sh \
   cpb-install-neuronfs.sh \
+  cpb-build-neuronfs-prebuilt.sh \
+  cpb-neuronfs-prebuilt.sh \
   cpb-completion.bash \
   cpb-doctor.sh \
   cpb-patch-neuronfs-hook.mjs \
@@ -253,28 +255,52 @@ if [[ -n "$personal_repo" ]]; then
 fi
 
 if [[ "$install_neuronfs" -eq 1 ]]; then
-  if ! command -v go >/dev/null 2>&1 && [[ "$auto_install_go" -eq 1 ]]; then
-    if ! bash "$target_repo/scripts/cpb-install-go.sh"; then
-      printf 'Automatic Go install did not complete; continuing with degraded NeuronFS hook-only mode.\n'
-    fi
-  fi
+  run_neuronfs_install() {
+    CPB_REPO_ROOT="$target_repo" \
+    CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+    bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+  }
 
-  if command -v go >/dev/null 2>&1; then
-    CPB_REPO_ROOT="$target_repo" \
-    CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-    NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-    bash "$target_repo/scripts/cpb-install-neuronfs.sh"
-  else
-    if [[ "$auto_install_go" -eq 1 ]]; then
-      printf 'Go is still not available; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
-    else
-      printf 'Go auto-install was skipped; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+  set +e
+  run_neuronfs_install
+  neuronfs_install_rc=$?
+  set -e
+
+  if [[ "$neuronfs_install_rc" -eq 2 ]]; then
+    if ! command -v go >/dev/null 2>&1 && [[ "$auto_install_go" -eq 1 ]]; then
+      if bash "$target_repo/scripts/cpb-install-go.sh"; then
+        set +e
+        run_neuronfs_install
+        neuronfs_install_rc=$?
+        set -e
+      else
+        printf 'Automatic Go install did not complete; continuing with degraded NeuronFS hook-only mode.\n'
+      fi
     fi
-    CPB_REPO_ROOT="$target_repo" \
-    CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-    NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-    NEURONFS_ALLOW_HOOK_ONLY=1 \
-    bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+
+    if [[ "$neuronfs_install_rc" -eq 2 ]]; then
+      if command -v go >/dev/null 2>&1; then
+        echo "NeuronFS CLI is still unavailable even though Go is installed." >&2
+        exit 1
+      fi
+
+      if [[ "$auto_install_go" -eq 1 ]]; then
+        printf 'Go is still not available and no prebuilt NeuronFS CLI was found; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+      else
+        printf 'Go auto-install was skipped and no prebuilt NeuronFS CLI was found; continuing with degraded NeuronFS hook-only mode (autogrowth disabled).\n'
+      fi
+
+      CPB_REPO_ROOT="$target_repo" \
+      CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+      NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
+      NEURONFS_ALLOW_HOOK_ONLY=1 \
+      bash "$target_repo/scripts/cpb-install-neuronfs.sh"
+    elif [[ "$neuronfs_install_rc" -ne 0 ]]; then
+      exit "$neuronfs_install_rc"
+    fi
+  elif [[ "$neuronfs_install_rc" -ne 0 ]]; then
+    exit "$neuronfs_install_rc"
   fi
 fi
 

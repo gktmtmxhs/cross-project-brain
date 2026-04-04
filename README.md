@@ -141,7 +141,19 @@ The installer is designed to set up, in one pass:
 - NeuronFS install and hook patch
 - first runtime brain rebuild
 
-If `go` is not installed, the installer now tries to install it automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`). If that auto-install path is unavailable or fails, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
+The installer now prefers a prebuilt `neuronfs` release asset for the current OS/arch. If a matching prebuilt asset is not available, it then tries to install `go` automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`) and builds the CLI locally. If both paths are unavailable, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
+
+Prebuilt release assets use this naming scheme:
+
+```text
+neuronfs-<neuronfs-ref>-<goos>-<goarch>.tar.gz
+```
+
+If you are publishing a CPB release, generate them with:
+
+```bash
+bash scripts/cpb-build-neuronfs-prebuilt.sh --goos linux --goarch amd64
+```
 
 If you pass `--personal-repo`, the installer also assumes a recommended GitHub private repo name of `<github-username>/cpb-personal` and:
 
