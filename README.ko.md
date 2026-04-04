@@ -199,16 +199,22 @@ bash scripts/cpb-doctor.sh
 - `solo-tracked`
 - `solo-personal`
 
-명령 예시는 이런 형태입니다.
+`bash scripts/cpb-setup-shell.sh` 후 `source ~/.bashrc`를 하면 기본 인터페이스는 이렇게 됩니다.
 
 ```bash
-bash scripts/setup-cpb-profile.sh profiles
-bash scripts/setup-cpb-profile.sh status
-bash scripts/setup-cpb-profile.sh apply team-local
-bash scripts/setup-cpb-profile.sh apply team-personal
+cpb profiles
+cpb status
+cpb apply team-local
+cpb apply team-personal
 ```
 
-소비자 repo가 원하면 이 위에 더 짧은 product alias를 얹을 수는 있지만, 이제 profile 기반 초기 설정과 상태 확인 자체는 공개 CPB 코어만으로도 됩니다.
+fallback 명령도 그대로 됩니다.
+
+```bash
+bash scripts/setup-cpb-profile.sh status
+```
+
+소비자 repo가 원하면 이 위에 더 짧은 product alias를 얹을 수는 있지만, 이제 profile 기반 초기 설정과 상태 확인 자체는 공개 CPB 코어의 `cpb ...` 인터페이스만으로도 됩니다.
 
 ## 설치 후 저장소 구조
 

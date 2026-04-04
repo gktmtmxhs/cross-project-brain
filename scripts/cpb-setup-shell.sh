@@ -35,11 +35,17 @@ marker_start="# Cross-Project Brain auto-env"
 marker_end="# End Cross-Project Brain auto-env"
 temp_file="$(mktemp)"
 repo_root_escaped="$(shell_escape "$repo_root")"
+profile_script_escaped="$(shell_escape "$repo_root/scripts/setup-cpb-profile.sh")"
 
 block_contents="$(cat <<EOF
 $marker_start
 if [ -f ${repo_root_escaped}/scripts/project-brain-autoenv.bash ]; then
   . ${repo_root_escaped}/scripts/project-brain-autoenv.bash
+fi
+if [ -f ${profile_script_escaped} ]; then
+  cpb() {
+    bash ${profile_script_escaped} "\$@"
+  }
 fi
 $marker_end
 EOF
@@ -67,4 +73,8 @@ Bash rc: $bashrc
 
 Open a new shell or run:
   source ~/.bashrc
+
+After that you can use:
+  cpb status
+  cpb apply team-personal
 EOF

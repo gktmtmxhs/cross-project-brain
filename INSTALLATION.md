@@ -93,18 +93,18 @@ Supported profiles:
 - solo repo with tracked `project brain`
 - solo repo with personal-private-repo `project brain`
 
-Example interface:
+Preferred interface after shell setup:
 
 ```bash
-bash scripts/setup-cpb-profile.sh profiles
-bash scripts/setup-cpb-profile.sh status
-bash scripts/setup-cpb-profile.sh apply team-local
-bash scripts/setup-cpb-profile.sh apply team-personal
-bash scripts/setup-cpb-profile.sh apply solo-tracked
-bash scripts/setup-cpb-profile.sh apply solo-personal
+cpb profiles
+cpb status
+cpb apply team-local
+cpb apply team-personal
+cpb apply solo-tracked
+cpb apply solo-personal
 ```
 
-Consumer repos can still add a thinner alias if they want shorter product-specific commands, but the public-core wrapper is enough for first-run setup and state checks on its own.
+Fallback commands such as `bash scripts/setup-cpb-profile.sh status` still work. Consumer repos can still add a thinner alias if they want shorter product-specific commands, but the public-core wrapper is enough for first-run setup and state checks on its own.
 
 ## Recommended Real-World Layout
 

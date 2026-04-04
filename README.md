@@ -197,16 +197,22 @@ Built-in profiles:
 - `solo-tracked`
 - `solo-personal`
 
-Example commands:
+After `bash scripts/cpb-setup-shell.sh` and `source ~/.bashrc`, the preferred interface is:
 
 ```bash
-bash scripts/setup-cpb-profile.sh profiles
-bash scripts/setup-cpb-profile.sh status
-bash scripts/setup-cpb-profile.sh apply team-local
-bash scripts/setup-cpb-profile.sh apply team-personal
+cpb profiles
+cpb status
+cpb apply team-local
+cpb apply team-personal
 ```
 
-Consumer repos can still add a thin alias on top if they want shorter product-specific commands, but the public CPB core is now self-sufficient for profile-based setup and state checks.
+Fallback commands still work:
+
+```bash
+bash scripts/setup-cpb-profile.sh status
+```
+
+Consumer repos can still add a thin alias on top if they want shorter product-specific commands, but the public CPB core now exposes `cpb ...` directly once shell setup is installed.
 
 ## What Gets Created After Install
 
