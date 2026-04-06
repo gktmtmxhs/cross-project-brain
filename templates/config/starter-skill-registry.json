@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "presets": {
+    "minimal": [
+      "frontend-developer",
+      "backend-architect",
+      "api-tester",
+      "security-engineer",
+      "reality-checker"
+    ],
+    "web": [
+      "frontend-developer",
+      "api-tester",
+      "security-engineer",
+      "reality-checker",
+      "design-system"
+    ],
+    "backend": [
+      "backend-architect",
+      "api-tester",
+      "security-engineer",
+      "reality-checker"
+    ],
+    "fullstack": [
+      "frontend-developer",
+      "backend-architect",
+      "api-tester",
+      "security-engineer",
+      "reality-checker",
+      "design-system"
+    ],
+    "growth": [
+      "content-creator",
+      "growth-hacker",
+      "seo-specialist",
+      "social-media-strategist"
+    ]
+  },
+  "skills": {
+    "frontend-developer": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "frontend",
+      "description": "Frontend implementation starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "engineering/engineering-frontend-developer.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "backend-architect": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "backend",
+      "description": "Backend architecture starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "engineering/engineering-backend-architect.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "api-tester": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "testing",
+      "description": "API testing starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "testing/testing-api-tester.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "security-engineer": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "security",
+      "description": "Security review starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "engineering/engineering-security-engineer.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "reality-checker": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "platform",
+      "description": "Evidence-first release and risk review starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "testing/testing-reality-checker.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "content-creator": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "content",
+      "description": "Content strategy starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "marketing/marketing-content-creator.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "growth-hacker": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "growth",
+      "description": "Growth experimentation starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "marketing/marketing-growth-hacker.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "seo-specialist": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "growth",
+      "description": "SEO starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "marketing/marketing-seo-specialist.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "social-media-strategist": {
+      "repo": "https://github.com/msitarzewski/agency-agents.git",
+      "ref": "4feb0cd736dd0e2e9830cd54dfc99770621bed90",
+      "license": "MIT",
+      "role": "growth",
+      "description": "Social media strategy starter skill imported from agency-agents.",
+      "imports": [
+        {
+          "source": "marketing/marketing-social-media-strategist.md",
+          "target": "SKILL.md"
+        }
+      ]
+    },
+    "design-system": {
+      "repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+      "ref": "b7e3af80f6e331f6fb456667b82b12cade7c9d35",
+      "license": "MIT",
+      "role": "design",
+      "aliases": [
+        "ui-ux-pro-max"
+      ],
+      "description": "Design-system starter skill imported from ui-ux-pro-max-skill.",
+      "imports": [
+        {
+          "source": ".claude/skills/design-system",
+          "target": "."
+        }
+      ]
+    }
+  }
+}

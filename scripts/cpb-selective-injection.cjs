@@ -1,3 +1,6 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
 const DEFAULT_ROLE_KEYWORDS = {
   frontend: [
     "frontend",
@@ -182,6 +185,28 @@ function normalizeStringMap(raw, fallback) {
   );
 }
 
+function loadSkillRoleMapFromRepo() {
+  const repoRoot = process.env.CPB_REPO_ROOT || process.cwd();
+  const candidates = [
+    path.join(repoRoot, "config", "cpdb", "skill-role-map.json"),
+    path.join(repoRoot, "config", "cpdb", "skill-role-map.example.json"),
+    path.join(repoRoot, "templates", "config", "skill-role-map.example.json"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) {
+      continue;
+    }
+    try {
+      return normalizeStringMap(fs.readFileSync(candidate, "utf8"), {});
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
 function normalizeKeywordMap(raw, fallback) {
   const parsed = parseJsonValue(raw, fallback);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -249,7 +274,7 @@ function parsePathHints(raw) {
 const ROLE_KEYWORDS = normalizeKeywordMap(process.env.CPB_SELECTIVE_INJECTION_ROLE_KEYWORDS_JSON || "", DEFAULT_ROLE_KEYWORDS);
 const SKILL_ROLE_MAP = normalizeStringMap(
   process.env.CPB_SELECTIVE_INJECTION_SKILL_ROLE_MAP_JSON || process.env.CPB_SKILL_ROLE_MAP_JSON || "",
-  {},
+  loadSkillRoleMapFromRepo(),
 );
 const SURFACE_KEYWORDS = normalizeKeywordMap(process.env.CPB_SELECTIVE_INJECTION_SURFACE_KEYWORDS_JSON || "", DEFAULT_SURFACE_KEYWORDS);
 const ENV_KEYWORDS = normalizeKeywordMap(process.env.CPB_SELECTIVE_INJECTION_ENV_KEYWORDS_JSON || "", DEFAULT_ENV_KEYWORDS);

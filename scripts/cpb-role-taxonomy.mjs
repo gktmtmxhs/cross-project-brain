@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+
+const currentFilePath = fileURLToPath(import.meta.url);
+const scriptDir = path.dirname(currentFilePath);
+
 export const roleDefaults = {
   general: "patterns",
   frontend: "implementation",
@@ -157,7 +165,32 @@ function parseSkillRoleMap(raw) {
   }
 }
 
-export const skillRoleMap = Object.freeze(parseSkillRoleMap(process.env.CPB_SKILL_ROLE_MAP_JSON || ""));
+function loadSkillRoleMapFromRepo() {
+  const repoRoot = process.env.CPB_REPO_ROOT || path.resolve(scriptDir, "..");
+  const candidates = [
+    path.join(repoRoot, "config", "cpdb", "skill-role-map.json"),
+    path.join(repoRoot, "config", "cpdb", "skill-role-map.example.json"),
+    path.join(repoRoot, "templates", "config", "skill-role-map.example.json"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) {
+      continue;
+    }
+    try {
+      return parseSkillRoleMap(fs.readFileSync(candidate, "utf8"));
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+export const skillRoleMap = Object.freeze({
+  ...loadSkillRoleMapFromRepo(),
+  ...parseSkillRoleMap(process.env.CPB_SKILL_ROLE_MAP_JSON || ""),
+});
 
 export function resolveRoleFromSkill(skillName, roleMap = skillRoleMap) {
   const key = sanitizeSegment(skillName, "");

@@ -159,6 +159,8 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
 
 아직 거의 비어 있는 repo라면, 이미 알고 있는 척하지 않고 `greenfield` 타입과 TODO placeholder로 scaffold를 만듭니다.
 
+설치 시에는 pinned upstream repo에서 curated starter skill 세트를 가져오도록 설정할 수도 있습니다. 이 경로는 기본으로 켜지지 않고, 플래그나 대화형 prompt로 opt-in 해야 합니다. 기본 registry는 허용한 permissive license와 고정 commit ref만 사용하도록 제한되어 있고, 가져온 skill은 `.codex/vendor-skills/`에 vendor되고 `.codex/skills/` wrapper, `config/cpdb/skills.lock.json`, `docs/cpb/THIRD_PARTY_NOTICES.md`까지 같이 생성합니다.
+
 그리고 personal repo를 함께 지정했다면:
 
 - 권장 GitHub private repo 이름을 `<github-username>/cpb-personal`로 가정합니다
@@ -175,6 +177,12 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
   - 첫 project profile type을 강제로 지정합니다
 - `--project-summary <text>`
   - 자동 추정이나 TODO 대신 첫 summary를 직접 넣습니다
+- `--with-starter-skills`
+  - 설치 중 curated starter skill preset을 같이 import합니다
+- `--starter-skill-preset <name>`
+  - `minimal`, `web`, `backend`, `fullstack`, `growth` 같은 preset을 고릅니다
+- `--starter-skill-registry <path>`
+  - 기본 pinned registry 대신 로컬 custom registry 파일을 씁니다
 - `--non-interactive`
   - prompt 없이 스크립트형 설치로 고정합니다
 - `--shared-repo`
@@ -244,6 +252,33 @@ bash scripts/setup-cpb-profile.sh status
 
 소비자 repo가 원하면 이 위에 더 짧은 product alias를 얹을 수는 있지만, 이제 profile 기반 초기 설정과 상태 확인 자체는 공개 CPB 코어의 `cpb ...` 인터페이스만으로도 됩니다.
 
+## Starter Skill Import
+
+공개 CPB는 기본으로 외부 skill 본문을 같이 싣지 않지만, 원하면 curated starter set을 vendor할 수 있습니다.
+
+설치 후 수동 import:
+
+```bash
+bash scripts/cpb-import-starter-skills.sh --preset web
+```
+
+이 명령은 아래를 합니다.
+
+- local starter registry에 적힌 pinned upstream skill repo를 clone
+- 가져온 파일을 `.codex/vendor-skills/` 아래에 vendor
+- `.codex/skills/` 아래에 managed wrapper 생성
+- `config/cpdb/skill-role-map.json` 생성
+- `config/cpdb/skills.lock.json` 생성
+- `docs/cpb/THIRD_PARTY_NOTICES.md` 재생성
+
+기본 registry는 설치 뒤 `config/cpdb/starter-skill-registry.json` 에 놓입니다. 여기에는 아래 정보가 들어갑니다.
+
+- upstream repo URL
+- pinned ref
+- allowlisted license
+- import할 source path
+- local skill 이름, alias, role
+
 ## 설치 후 저장소 구조
 
 설치가 끝나면 보통 아래 구조가 생깁니다.
@@ -253,6 +288,24 @@ bash scripts/setup-cpb-profile.sh status
 ```text
 AGENTS.md
 CLAUDE.md
+
+config/
+  cpdb/
+    cpb.env.example
+    project-profile.json
+    starter-skill-registry.json
+    skill-role-map.example.json
+    skill-role-map.json
+    skills.lock.json
+
+docs/
+  cpb/
+    PROJECT_PROFILE.md
+    THIRD_PARTY_NOTICES.md
+
+.codex/
+  skills/
+  vendor-skills/
 
 brains/
   team-brain/brain_v4/

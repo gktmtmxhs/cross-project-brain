@@ -35,6 +35,18 @@ function makeGitRepo(prefix) {
   return repoPath;
 }
 
+function makeCommittedRepo(prefix, files) {
+  const repoPath = makeGitRepo(prefix);
+  for (const [relativePath, content] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(repoPath, relativePath)), { recursive: true });
+    fs.writeFileSync(path.join(repoPath, relativePath), content, "utf8");
+  }
+  spawnSync("git", ["add", "."], { cwd: repoPath, encoding: "utf8" });
+  spawnSync("git", ["commit", "-m", "fixture"], { cwd: repoPath, encoding: "utf8" });
+  const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoPath, encoding: "utf8" }).stdout.trim();
+  return { repoPath, sha };
+}
+
 test("cpb install writes explicit project profile scaffolds", () => {
   const targetRepo = makeGitRepo("cpb-install-explicit-");
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-install-home-"));
@@ -105,4 +117,66 @@ test("cpb install auto-detects a frontend web app and writes a guessed scaffold"
   assert.ok(profileJson.stack.includes("react"));
   assert.ok(profileJson.detectedSignals.includes("package.json"));
   assert.ok(profileJson.detectedSignals.includes("vite.config"));
+});
+
+test("cpb install can import starter skills from a custom registry", () => {
+  const targetRepo = makeGitRepo("cpb-install-starter-");
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-install-home-"));
+  const upstream = makeCommittedRepo("cpb-install-upstream-", {
+    LICENSE: "MIT fixture\n",
+    "engineering/engineering-frontend-developer.md": "# Frontend Developer\n\nPrefer semantic HTML.\n",
+  });
+  const registryPath = path.join(homeDir, "starter-skill-registry.json");
+
+  fs.writeFileSync(
+    registryPath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        presets: {
+          minimal: ["frontend-developer"],
+        },
+        skills: {
+          "frontend-developer": {
+            repo: upstream.repoPath,
+            ref: upstream.sha,
+            license: "MIT",
+            role: "frontend",
+            imports: [
+              {
+                source: "engineering/engineering-frontend-developer.md",
+                target: "SKILL.md",
+              },
+            ],
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  runInstall(targetRepo, homeDir, [
+    "--with-starter-skills",
+    "--starter-skill-preset",
+    "minimal",
+    "--starter-skill-registry",
+    registryPath,
+  ]);
+
+  const vendoredSkill = fs.readFileSync(
+    path.join(targetRepo, ".codex", "vendor-skills", "frontend-developer", "SKILL.md"),
+    "utf8",
+  );
+  assert.match(vendoredSkill, /Frontend Developer/u);
+
+  const roleMap = JSON.parse(fs.readFileSync(path.join(targetRepo, "config", "cpdb", "skill-role-map.json"), "utf8"));
+  assert.equal(roleMap["frontend-developer"], "frontend");
+
+  const lockData = JSON.parse(fs.readFileSync(path.join(targetRepo, "config", "cpdb", "skills.lock.json"), "utf8"));
+  assert.equal(lockData.skills[0].skill, "frontend-developer");
+
+  const notice = fs.readFileSync(path.join(targetRepo, "docs", "cpb", "THIRD_PARTY_NOTICES.md"), "utf8");
+  assert.match(notice, /frontend-developer/u);
 });
