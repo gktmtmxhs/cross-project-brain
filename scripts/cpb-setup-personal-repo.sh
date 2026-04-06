@@ -2,32 +2,43 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/cpb-paths.sh"
+source "$script_dir/cpb-setup-lib.sh"
+
 repo_root=""
 personal_repo=""
 shared_repo=0
+project_brain_in_personal_repo=0
+project_brain_mode_override=""
 personal_repo_name="${CPB_PERSONAL_REPO_NAME:-cpb-personal}"
 personal_repo_create_mode="${CPB_CREATE_PERSONAL_REMOTE:-ask}"
-project_brain_mode_override=""
-project_brain_in_personal_repo=0
 personal_repo_remote_found=0
 personal_repo_remote_created=0
 personal_repo_origin_url=""
 personal_repo_bootstrap_mode="unknown"
+usage_script="${CPB_SETUP_PERSONAL_REPO_USAGE_SCRIPT:-scripts/cpb-setup-personal-repo.sh}"
+label="${CPB_SETUP_PERSONAL_REPO_LABEL:-CPB}"
+personal_repo_env_name="${CPB_SETUP_PERSONAL_REPO_PERSONAL_REPO_ENV_NAME:-CPB_PERSONAL_REPO}"
+global_brain_env_name="${CPB_SETUP_PERSONAL_REPO_GLOBAL_BRAIN_ENV_NAME:-CPB_GLOBAL_BRAIN}"
+career_docs_root_env_name="${CPB_SETUP_PERSONAL_REPO_CAREER_DOCS_ROOT_ENV_NAME:-CPB_CAREER_DOCS_ROOT}"
+project_brain_env_name="${CPB_SETUP_PERSONAL_REPO_PROJECT_BRAIN_ENV_NAME:-CPB_PROJECT_BRAIN}"
+auto_pull_env_name="${CPB_SETUP_PERSONAL_REPO_AUTO_PULL_ENV_NAME:-CPB_AUTO_PULL_PERSONAL}"
+auto_push_env_name="${CPB_SETUP_PERSONAL_REPO_AUTO_PUSH_ENV_NAME:-CPB_AUTO_PUSH_PERSONAL}"
 
 usage() {
   cat <<EOF
-Usage: bash scripts/cpb-setup-personal-repo.sh <personal-repo-path> [--shared-repo] [--repo-root <path>]
-       bash scripts/cpb-setup-personal-repo.sh <personal-repo-path> [--project-brain-mode <tracked|local|personal>] [--repo-root <path>]
+Usage: bash $usage_script <personal-repo-path> [--shared-repo] [--repo-root <path>]
+       bash $usage_script <personal-repo-path> [--project-brain-mode <tracked|local|personal>] [--repo-root <path>]
 
 Examples:
-  bash scripts/cpb-setup-personal-repo.sh ~/workspace/cpb-personal
-  bash scripts/cpb-setup-personal-repo.sh ~/workspace/cpb-personal --shared-repo
-  bash scripts/cpb-setup-personal-repo.sh ~/workspace/cpb-personal --project-brain-mode personal
+  bash $usage_script ~/workspace/cpb-personal
+  bash $usage_script ~/workspace/cpb-personal --shared-repo
+  bash $usage_script ~/workspace/cpb-personal --project-brain-mode personal
 
 What it pins:
-  - CPB_PERSONAL_REPO
-  - CPB_GLOBAL_BRAIN
-  - CPB_CAREER_DOCS_ROOT
+  - $personal_repo_env_name
+  - $global_brain_env_name
+  - $career_docs_root_env_name
 
 Project brain modes:
   - tracked   store project lessons in brains/project-operators/<operator>/... inside this repo
@@ -54,360 +65,10 @@ Environment override:
 EOF
 }
 
-expand_path() {
-  local value="$1"
-
-  if [[ "$value" == "~" ]]; then
-    value="$HOME"
-  elif [[ "$value" == ~/* ]]; then
-    value="$HOME/${value#~/}"
-  fi
-
-  if [[ "$value" != /* ]]; then
-    value="$PWD/$value"
-  fi
-
-  printf '%s\n' "$value"
-}
-
-shell_escape() {
-  printf '%q' "$1"
-}
-
-personal_repo_local_state() {
-  local target="$1"
-
-  if [[ -d "$target/.git" ]]; then
-    printf 'git-repo\n'
-    return 0
-  fi
-
-  if [[ ! -e "$target" ]]; then
-    printf 'missing\n'
-    return 0
-  fi
-
-  if [[ -d "$target" ]]; then
-    if [[ -z "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
-      printf 'empty-dir\n'
-    else
-      printf 'occupied-dir\n'
-    fi
-    return 0
-  fi
-
-  printf 'occupied-file\n'
-}
-
-can_prompt_tty() {
-  [[ -r /dev/tty && -w /dev/tty ]]
-}
-
-prompt_yes_no() {
-  local prompt="$1"
-  local reply=""
-
-  if ! can_prompt_tty; then
-    return 1
-  fi
-
-  printf '%s\n' "$prompt" >/dev/tty
-  read -r reply </dev/tty || true
-  case "$reply" in
-    y|Y|yes|YES)
-      return 0
-      ;;
-  esac
-  return 1
-}
-
-ensure_gh_auth_guidance() {
-  local expected_slug="$1"
-
-  if ! command -v gh >/dev/null 2>&1; then
-    cat <<EOF
-GitHub CLI check:
-  - gh is not installed here
-  - install GitHub CLI or create the repo manually if you want desktop/laptop sync
-
-Recommended repo:
-  $expected_slug
-EOF
-    return 1
-  fi
-
-  if gh auth status >/dev/null 2>&1; then
-    return 0
-  fi
-
-  cat <<EOF
-GitHub CLI check:
-  - gh is installed but not authenticated
-  - CPB uses gh to check or create your personal private repo
-EOF
-
-  case "$personal_repo_create_mode" in
-    always)
-      if can_prompt_tty; then
-        cat >/dev/tty <<'EOF'
-
-CPB needs GitHub CLI authentication to check or create your personal sync repo.
-Starting: gh auth login
-EOF
-        if gh auth login </dev/tty >/dev/tty 2>/dev/tty && gh auth status >/dev/null 2>&1; then
-          cat <<EOF
-  - gh login completed
-EOF
-          return 0
-        fi
-      fi
-      ;;
-    ask)
-      if prompt_yes_no "
-CPB needs GitHub CLI authentication to check or create your personal sync repo.
-Run 'gh auth login' now? [y/N]"; then
-        if gh auth login </dev/tty >/dev/tty 2>/dev/tty && gh auth status >/dev/null 2>&1; then
-          cat <<EOF
-  - gh login completed
-EOF
-          return 0
-        fi
-      fi
-      ;;
-  esac
-
-  cat <<EOF
-  - run gh auth login first if you want CPB to check or create the repo automatically
-EOF
-  return 1
-}
-
-check_personal_remote_guidance() {
-  local operator_id="$1"
-  local personal_repo="$2"
-  local expected_slug="${operator_id}/${personal_repo_name}"
-  local origin_url=""
-  personal_repo_remote_found=0
-  personal_repo_remote_created=0
-  personal_repo_origin_url=""
-  personal_repo_bootstrap_mode="unknown"
-
-  origin_url="$(git -C "$personal_repo" remote get-url origin 2>/dev/null || true)"
-
-  cat <<EOF
-
-Recommended personal GitHub private repo:
-  $expected_slug
-EOF
-
-  if ! command -v node >/dev/null 2>&1; then
-    cat <<EOF
-GitHub private repo check:
-  - skipped automatic lookup because node is not available here
-  - if you want desktop/laptop sync, create this private repo first:
-    $expected_slug
-EOF
-  elif ensure_gh_auth_guidance "$expected_slug"; then
-    local repo_json
-    repo_json="$(gh repo view "$expected_slug" --json nameWithOwner,visibility,sshUrl,url 2>/dev/null || true)"
-
-    if [[ -n "$repo_json" ]]; then
-      local visibility ssh_url https_url
-      visibility="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.visibility || "");')"
-      ssh_url="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.sshUrl || "");')"
-      https_url="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.url || "");')"
-
-      cat <<EOF
-GitHub private repo check:
-  - found: $expected_slug
-  - visibility: $visibility
-EOF
-      personal_repo_remote_found=1
-      personal_repo_bootstrap_mode="returning-user"
-
-      if [[ "$visibility" != "PRIVATE" && "$visibility" != "INTERNAL" ]]; then
-        cat <<EOF
-  - warning: this repo is not private; desktop/laptop sync will still work, but private mode is recommended
-EOF
-      fi
-
-      if [[ -z "$origin_url" ]]; then
-        if [[ -n "$ssh_url" ]]; then
-          origin_url="$ssh_url"
-        elif [[ -n "$https_url" ]]; then
-          origin_url="$https_url"
-        fi
-      fi
-    else
-      local should_create="no"
-      personal_repo_bootstrap_mode="first-user"
-
-      case "$personal_repo_create_mode" in
-        always)
-          should_create="yes"
-          ;;
-        ask)
-          if [[ -r /dev/tty && -w /dev/tty ]]; then
-            cat >/dev/tty <<EOF
-
-CPB can use a personal private GitHub repo for desktop/laptop sync.
-Recommended repo:
-  $expected_slug
-
-This repo stores your personal global brain and career docs.
-It should usually be private.
-
-Create it now? [y/N]
-EOF
-            local reply
-            read -r reply </dev/tty || true
-            case "$reply" in
-              y|Y|yes|YES)
-                should_create="yes"
-                ;;
-            esac
-          fi
-          ;;
-      esac
-
-      if [[ "$should_create" == "yes" ]]; then
-        if gh repo create "$expected_slug" --private >/dev/null 2>&1; then
-          repo_json="$(gh repo view "$expected_slug" --json nameWithOwner,visibility,sshUrl,url 2>/dev/null || true)"
-          if [[ -n "$repo_json" ]]; then
-            local visibility ssh_url https_url
-            visibility="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.visibility || "");')"
-            ssh_url="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.sshUrl || "");')"
-            https_url="$(printf '%s' "$repo_json" | node -e 'const data=JSON.parse(require("fs").readFileSync(0,"utf8")); process.stdout.write(data.url || "");')"
-
-            cat <<EOF
-GitHub private repo check:
-  - created: $expected_slug
-  - visibility: $visibility
-EOF
-            personal_repo_remote_found=1
-            personal_repo_remote_created=1
-            personal_repo_bootstrap_mode="first-user"
-
-            if [[ -z "$origin_url" ]]; then
-              if [[ -n "$ssh_url" ]]; then
-                origin_url="$ssh_url"
-              elif [[ -n "$https_url" ]]; then
-                origin_url="$https_url"
-              fi
-            fi
-          fi
-        else
-          cat <<EOF
-GitHub private repo check:
-  - attempted to create: $expected_slug
-  - creation failed; create it manually if you want desktop/laptop sync
-
-Suggested command:
-  gh repo create "$expected_slug" --private
-EOF
-        fi
-      else
-        cat <<EOF
-GitHub private repo check:
-  - not found: $expected_slug
-  - create it first if you want desktop/laptop sync
-
-Suggested command:
-  gh repo create "$expected_slug" --private
-EOF
-      fi
-    fi
-  fi
-
-  if [[ -n "$origin_url" ]]; then
-    personal_repo_origin_url="$origin_url"
-    cat <<EOF
-Personal repo origin:
-  $origin_url
-EOF
-  else
-    cat <<EOF
-Personal repo origin:
-  - not configured yet
-EOF
-  fi
-}
-
-sync_personal_repo_checkout() {
-  local personal_repo="$1"
-  local origin_url="$2"
-  local repo_state
-  repo_state="$(personal_repo_local_state "$personal_repo")"
-
-  case "$repo_state" in
-    missing)
-      if [[ -n "$origin_url" ]]; then
-        git clone "$origin_url" "$personal_repo" >/dev/null 2>&1 || {
-          mkdir -p "$personal_repo"
-          git init -q "$personal_repo"
-        }
-      else
-        mkdir -p "$personal_repo"
-        git init -q "$personal_repo"
-      fi
-      ;;
-    empty-dir)
-      if [[ -n "$origin_url" ]]; then
-        git clone "$origin_url" "$personal_repo" >/dev/null 2>&1 || git init -q "$personal_repo"
-      else
-        git init -q "$personal_repo"
-      fi
-      ;;
-    occupied-dir|occupied-file)
-      cat <<EOF
-Local personal repo path check:
-  - path exists but is not a git repo checkout: $personal_repo
-  - leaving it untouched; move it away or choose another path if you want automatic clone/sync
-EOF
-      return 0
-      ;;
-  esac
-
-  if [[ ! -d "$personal_repo/.git" ]]; then
-    return 0
-  fi
-
-  if [[ -n "$origin_url" ]]; then
-    current_origin="$(git -C "$personal_repo" remote get-url origin 2>/dev/null || true)"
-    if [[ -z "$current_origin" ]]; then
-      git -C "$personal_repo" remote add origin "$origin_url"
-    elif [[ "$current_origin" != "$origin_url" ]]; then
-      git -C "$personal_repo" remote set-url origin "$origin_url"
-    fi
-
-    git -C "$personal_repo" fetch origin >/dev/null 2>&1 || true
-
-    if ! git -C "$personal_repo" rev-parse --verify HEAD >/dev/null 2>&1; then
-      if git -C "$personal_repo" show-ref --verify --quiet refs/remotes/origin/main; then
-        git -C "$personal_repo" checkout -q -B main --track origin/main >/dev/null 2>&1 || true
-      elif git -C "$personal_repo" show-ref --verify --quiet refs/remotes/origin/master; then
-        git -C "$personal_repo" checkout -q -B master --track origin/master >/dev/null 2>&1 || true
-      fi
-      return 0
-    fi
-
-    if git -C "$personal_repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-      git -C "$personal_repo" pull --ff-only >/dev/null 2>&1 || true
-      return 0
-    fi
-
-    current_branch="$(git -C "$personal_repo" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-    if [[ -n "$current_branch" ]] && git -C "$personal_repo" show-ref --verify --quiet "refs/remotes/origin/$current_branch"; then
-      git -C "$personal_repo" branch --set-upstream-to "origin/$current_branch" "$current_branch" >/dev/null 2>&1 || true
-      git -C "$personal_repo" pull --ff-only >/dev/null 2>&1 || true
-    fi
-  fi
-}
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo-root)
-      repo_root="$2"
+      repo_root="$(cd "$2" && pwd)"
       shift 2
       ;;
     --shared-repo)
@@ -444,43 +105,28 @@ if [[ -z "$personal_repo" ]]; then
 fi
 
 if [[ -z "$repo_root" ]]; then
-  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  repo_root="$(cpb_repo_root)"
 fi
 
-source "$script_dir/cpb-paths.sh"
-
-personal_repo="$(expand_path "$personal_repo")"
-operator_id="$(cpdb_detect_operator_id "$repo_root")"
-project_id="${CPB_PROJECT_ID:-$(basename "$repo_root")}"
+personal_repo="$(cpb_expand_path "$personal_repo")"
+operator_id="$(cpb_detect_operator_id "$repo_root" "${CPB_OPERATOR:-}")"
+project_id="${CPB_PROJECT_ID:-$(cpb_project_id "$repo_root")}"
+tracked_project_brain_root="${CPB_TRACKED_PROJECT_OPERATORS_ROOT:-$(cpb_tracked_project_operators_root_default "$repo_root")}"
 global_brain="$personal_repo/brains/global-operators/$operator_id/brain_v4"
 career_docs_root="$personal_repo/docs/career/operators/$operator_id"
-local_project_brain="$repo_root/.agent/cross-project-brain/$project_id/project-brain/brain_v4"
-tracked_project_brain="$repo_root/brains/project-operators/$operator_id/brain_v4"
-personal_project_brain="$personal_repo/brains/project-operators/$operator_id/$project_id/brain_v4"
+local_project_brain="${CPB_SETUP_PERSONAL_REPO_LOCAL_PROJECT_BRAIN:-$repo_root/.agent/cross-project-brain/$project_id/project-brain/brain_v4}"
+tracked_project_brain="$(cpb_tracked_project_brain_path "$tracked_project_brain_root" "$operator_id")"
+tracked_project_brain_seed_source="$(cpb_resolve_tracked_project_brain_source "$tracked_project_brain_root" "$operator_id")"
+personal_project_brain="$(cpb_personal_project_brain_path "$personal_repo" "$project_id" "$operator_id")"
 project_brain_path=""
 project_brain_mode="default"
 
-seed_project_brain_if_empty() {
-  local target_dir="$1"
-  local candidate=""
-
-  if [[ -n "$(find "$target_dir" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
-    return 0
-  fi
-
-  for candidate in "$local_project_brain" "$tracked_project_brain"; do
-    if [[ "$candidate" == "$target_dir" ]]; then
-      continue
-    fi
-    if [[ -d "$candidate" ]] && [[ -n "$(find "$candidate" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
-      rsync -a "$candidate"/ "$target_dir"/
-      return 0
-    fi
-  done
-}
-
-check_personal_remote_guidance "$operator_id" "$personal_repo"
-sync_personal_repo_checkout "$personal_repo" "$personal_repo_origin_url"
+cpb_check_personal_remote_guidance "$operator_id" "$personal_repo" "$personal_repo_name" "$personal_repo_create_mode"
+personal_repo_remote_found="$CPB_PERSONAL_REPO_REMOTE_FOUND"
+personal_repo_remote_created="$CPB_PERSONAL_REPO_REMOTE_CREATED"
+personal_repo_origin_url="$CPB_PERSONAL_REPO_ORIGIN_URL"
+personal_repo_bootstrap_mode="$CPB_PERSONAL_REPO_BOOTSTRAP_MODE"
+cpb_sync_personal_repo_checkout "$personal_repo" "$personal_repo_origin_url"
 mkdir -p "$global_brain" "$career_docs_root"
 
 if [[ -z "$project_brain_mode_override" ]]; then
@@ -501,13 +147,13 @@ case "$project_brain_mode_override" in
     ;;
   local)
     mkdir -p "$local_project_brain"
-    seed_project_brain_if_empty "$local_project_brain"
+    cpb_seed_project_brain_if_empty "$local_project_brain" "$local_project_brain" "$tracked_project_brain_seed_source"
     project_brain_path="$local_project_brain"
     project_brain_mode="local"
     ;;
   personal)
     mkdir -p "$personal_project_brain"
-    seed_project_brain_if_empty "$personal_project_brain"
+    cpb_seed_project_brain_if_empty "$personal_project_brain" "$local_project_brain" "$tracked_project_brain_seed_source"
     project_brain_path="$personal_project_brain"
     project_brain_mode="personal"
     ;;
@@ -522,58 +168,47 @@ if [[ "$shared_repo" -eq 1 && "$project_brain_mode" == "tracked" ]]; then
   echo "Warning: tracked project brain mode in a shared/team repo will commit project-specific lessons into this repo." >&2
 fi
 
-bashrc="$HOME/.bashrc"
-marker_start="# Cross-Project Brain personal repo"
-marker_end="# End Cross-Project Brain personal repo"
-autoenv_start="# Cross-Project Brain auto-env"
-temp_file="$(mktemp)"
-personal_repo_escaped="$(shell_escape "$personal_repo")"
-global_brain_escaped="$(shell_escape "$global_brain")"
-career_docs_root_escaped="$(shell_escape "$career_docs_root")"
+bashrc="${CPB_SETUP_PERSONAL_REPO_BASHRC:-$HOME/.bashrc}"
+marker_start="${CPB_SETUP_PERSONAL_REPO_MARKER_START:-# Cross-Project Brain personal repo}"
+marker_end="${CPB_SETUP_PERSONAL_REPO_MARKER_END:-# End Cross-Project Brain personal repo}"
+insert_before_marker="${CPB_SETUP_PERSONAL_REPO_INSERT_BEFORE_MARKER:-# Cross-Project Brain auto-env}"
+insert_before_fallback="${CPB_SETUP_PERSONAL_REPO_INSERT_BEFORE_FALLBACK_MARKER:-}"
+personal_repo_escaped="$(cpb_shell_escape "$personal_repo")"
+global_brain_escaped="$(cpb_shell_escape "$global_brain")"
+career_docs_root_escaped="$(cpb_shell_escape "$career_docs_root")"
+selected_insert_before="$insert_before_marker"
+
+if [[ -n "$insert_before_fallback" ]] && [[ -f "$bashrc" ]]; then
+  if [[ -z "$selected_insert_before" ]] || ! grep -Fxq "$selected_insert_before" "$bashrc"; then
+    if grep -Fxq "$insert_before_fallback" "$bashrc"; then
+      selected_insert_before="$insert_before_fallback"
+    fi
+  fi
+fi
 
 block_contents="$(cat <<EOF
 $marker_start
-export CPB_PERSONAL_REPO=${personal_repo_escaped}
-export CPB_GLOBAL_BRAIN=${global_brain_escaped}
-export CPB_CAREER_DOCS_ROOT=${career_docs_root_escaped}
-export CPB_AUTO_PULL_PERSONAL=1
-export CPB_AUTO_PUSH_PERSONAL=1
+export $personal_repo_env_name=${personal_repo_escaped}
+export $global_brain_env_name=${global_brain_escaped}
+export $career_docs_root_env_name=${career_docs_root_escaped}
+export $auto_pull_env_name=1
+export $auto_push_env_name=1
 EOF
 )"
 
 if [[ -n "$project_brain_path" ]]; then
-  project_brain_path_escaped="$(shell_escape "$project_brain_path")"
+  project_brain_path_escaped="$(cpb_shell_escape "$project_brain_path")"
   block_contents+="
-export CPB_PROJECT_BRAIN=${project_brain_path_escaped}"
+export $project_brain_env_name=${project_brain_path_escaped}"
 fi
 
 block_contents+="
 $marker_end"
 
-if [[ -f "$bashrc" ]]; then
-  awk -v start="$marker_start" -v end="$marker_end" -v autoenv="$autoenv_start" -v block="$block_contents" '
-    $0 == start { skipping=1; next }
-    $0 == end { skipping=0; next }
-    skipping == 1 { next }
-    inserted != 1 && $0 == autoenv {
-      print block
-      inserted=1
-    }
-    { print }
-    END {
-      if (inserted != 1) {
-        print block
-      }
-    }
-  ' "$bashrc" >"$temp_file"
-else
-  printf '%s\n' "$block_contents" >"$temp_file"
-fi
-
-mv "$temp_file" "$bashrc"
+cpb_upsert_file_block "$bashrc" "$marker_start" "$marker_end" "$block_contents" "$selected_insert_before"
 
 cat <<EOF
-CPB personal repo pinned.
+$label personal repo pinned.
 
 Repo:              $repo_root
 Operator:          $operator_id
@@ -623,12 +258,6 @@ Local-only project mode is enabled.
 The project brain will stay under .agent/ on this machine.
 EOF
   fi
-else
-  cat <<EOF
-
-Solo/personal repo mode is enabled.
-The project brain keeps its current default unless you override it separately.
-EOF
 fi
 
 cat <<EOF

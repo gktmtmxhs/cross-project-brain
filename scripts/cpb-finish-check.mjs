@@ -5,20 +5,27 @@ import path from "node:path";
 import process from "node:process";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { agentRoot, deviceBrain, globalBrain, projectBrain, repoRoot } from "./cpb-paths.mjs";
+import { fileURLToPath } from "node:url";
+import { agentRoot, deviceBrain, globalBrain, projectBrain, repoRoot, trackedProjectOperatorsRoot } from "./cpb-paths.mjs";
 
 const stateDir = path.join(agentRoot, "state");
 const logsDir = path.join(agentRoot, "logs");
 const baselinePath = path.join(stateDir, "finish-check-baseline.json");
 const auditLogPath = path.join(logsDir, "finish-check.jsonl");
-
-function writeStdout(message) {
-  fs.writeSync(process.stdout.fd, message);
-}
-
-function writeStderr(message) {
-  fs.writeSync(process.stderr.fd, message);
-}
+const usageScript = process.env.CPB_FINISH_CHECK_USAGE_SCRIPT || "scripts/cpb-finish-check.mjs";
+const logLearningUsageScript = process.env.CPB_LOG_LEARNING_USAGE_SCRIPT || "scripts/cpb-log-learning.mjs";
+const currentFilePath = fileURLToPath(import.meta.url);
+const extraIgnorePrefixes = String(process.env.CPB_EXTRA_FINISH_CHECK_IGNORE_PREFIXES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const trackedProjectOperatorsRelRoot = (() => {
+  const relative = path.relative(repoRoot, trackedProjectOperatorsRoot).replaceAll("\\", "/");
+  if (!relative || relative.startsWith("../") || relative === "..") {
+    return "";
+  }
+  return relative;
+})();
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -46,12 +53,8 @@ function runGit(args) {
   return result.stdout;
 }
 
-function isGitWorktree() {
-  const result = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  return result.status === 0;
+function pathMatchesPrefix(relPath, prefix) {
+  return relPath === prefix || relPath.startsWith(`${prefix}/`);
 }
 
 function shouldIgnoreRelPath(relPath) {
@@ -63,12 +66,15 @@ function shouldIgnoreRelPath(relPath) {
     return true;
   }
 
-  if (relPath === ".cpdb" || relPath.startsWith(".cpdb/") || relPath.includes("/.cpdb/")) {
-    return true;
+  for (const prefix of extraIgnorePrefixes) {
+    if (pathMatchesPrefix(relPath, prefix)) {
+      return true;
+    }
   }
 
   if (
-    relPath.startsWith("brains/project-operators/") &&
+    trackedProjectOperatorsRelRoot &&
+    pathMatchesPrefix(relPath, trackedProjectOperatorsRelRoot) &&
     (relPath.includes("/_inbox") || relPath.includes("/_agents"))
   ) {
     return true;
@@ -236,141 +242,141 @@ function collectRecentMemoryFiles(brainRoot, label, sinceIso) {
 }
 
 function usage() {
-  writeStderr(
-    "Usage: node scripts/cpb-finish-check.mjs [--init-baseline] [--reset-baseline] [--allow-no-lesson <reason>] [--allow-shared-career-publish <reason>]\n",
+  process.stderr.write(
+    `Usage: node ${usageScript} [--init-baseline] [--reset-baseline] [--allow-no-lesson <reason>] [--allow-shared-career-publish <reason>]\n`,
   );
 }
 
-const args = process.argv.slice(2);
-const initBaseline = args.includes("--init-baseline");
-const resetBaseline = args.includes("--reset-baseline");
-const allowIndex = args.indexOf("--allow-no-lesson");
-const allowReason = allowIndex >= 0 ? args[allowIndex + 1] : "";
-const allowSharedIndex = args.indexOf("--allow-shared-career-publish");
-const allowSharedReason = allowSharedIndex >= 0 ? args[allowSharedIndex + 1] : "";
+export function runCli(argv = process.argv.slice(2)) {
+  const initBaseline = argv.includes("--init-baseline");
+  const resetBaseline = argv.includes("--reset-baseline");
+  const allowIndex = argv.indexOf("--allow-no-lesson");
+  const allowReason = allowIndex >= 0 ? argv[allowIndex + 1] : "";
+  const allowSharedIndex = argv.indexOf("--allow-shared-career-publish");
+  const allowSharedReason = allowSharedIndex >= 0 ? argv[allowSharedIndex + 1] : "";
 
-if (allowIndex >= 0 && !allowReason) {
-  writeStderr("--allow-no-lesson requires a reason\n");
-  usage();
-  process.exit(1);
-}
-
-if (allowSharedIndex >= 0 && !allowSharedReason) {
-  writeStderr("--allow-shared-career-publish requires a reason\n");
-  usage();
-  process.exit(1);
-}
-
-if (args.includes("-h") || args.includes("--help")) {
-  usage();
-  process.exit(0);
-}
-
-if (!isGitWorktree()) {
-  writeStdout("CPB finish check skipped: repo is not a git worktree.\n");
-  process.exit(0);
-}
-
-const currentState = currentWorktreeState();
-
-if (initBaseline) {
-  if (!fs.existsSync(baselinePath)) {
-    writeBaseline("auto-init", currentState);
-    logAudit("baseline_init", { mode: "auto-init", paths: Object.keys(currentState).length });
-    writeStdout("CPB finish check baseline initialized.\n");
+  if (allowIndex >= 0 && !allowReason) {
+    process.stderr.write("--allow-no-lesson requires a reason\n");
+    usage();
+    process.exit(1);
   }
-  process.exit(0);
-}
 
-if (resetBaseline) {
-  writeBaseline("manual-reset", currentState);
-  logAudit("baseline_reset", { paths: Object.keys(currentState).length });
-  writeStdout("CPB finish check baseline reset.\n");
-  process.exit(0);
-}
-
-let baseline = loadBaseline();
-if (!baseline) {
-  baseline = writeBaseline("implicit-init", currentState);
-  logAudit("baseline_init", { mode: "implicit-init", paths: Object.keys(currentState).length });
-  writeStdout("CPB finish check baseline initialized. Run the command again near task end.\n");
-  process.exit(0);
-}
-
-const changedPaths = diffSinceBaseline(baseline.state ?? {}, currentState);
-if (changedPaths.length === 0) {
-  writeStdout("CPB finish check: no unreviewed repo changes since last checkpoint.\n");
-  process.exit(0);
-}
-
-const sharedCareerPaths = changedPaths.filter(isSharedCareerRelPath);
-const nonSharedPaths = changedPaths.filter((relPath) => !isSharedCareerRelPath(relPath));
-
-if (sharedCareerPaths.length > 0 && !allowSharedReason) {
-  writeStderr("CPB finish check blocked: shared career docs changed without explicit publish approval.\n");
-  for (const relPath of sharedCareerPaths) {
-    writeStderr(`- ${relPath}\n`);
+  if (allowSharedIndex >= 0 && !allowSharedReason) {
+    process.stderr.write("--allow-shared-career-publish requires a reason\n");
+    usage();
+    process.exit(1);
   }
-  writeStderr("\nShared career docs are publish targets, not default draft targets.\n");
-  writeStderr("If the user explicitly requested a shared/published version, rerun with:\n");
-  writeStderr("  node scripts/cpb-finish-check.mjs --allow-shared-career-publish \"user explicitly requested shared publish\"\n");
-  process.exit(3);
-}
 
-const memoryFiles = [
-  ...collectRecentMemoryFiles(globalBrain, "global", baseline.updatedAt),
-  ...collectRecentMemoryFiles(projectBrain, "project", baseline.updatedAt),
-  ...collectRecentMemoryFiles(deviceBrain, "device", baseline.updatedAt),
-];
-if (memoryFiles.length > 0) {
-  writeBaseline("lesson-recorded", currentState);
-  logAudit("finish_check_pass", {
-    mode: "lesson-recorded",
-    changedPaths,
-    memoryFiles,
-    sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
-  });
-  writeStdout("CPB finish check: recent durable lesson found. Baseline advanced.\n");
-  for (const item of memoryFiles) {
-    writeStdout(`- ${item}\n`);
+  if (argv.includes("-h") || argv.includes("--help")) {
+    usage();
+    process.exit(0);
   }
-  process.exit(0);
+
+  const currentState = currentWorktreeState();
+
+  if (initBaseline) {
+    if (!fs.existsSync(baselinePath)) {
+      writeBaseline("auto-init", currentState);
+      logAudit("baseline_init", { mode: "auto-init", paths: Object.keys(currentState).length });
+      process.stdout.write("CPB finish check baseline initialized.\n");
+    }
+    process.exit(0);
+  }
+
+  if (resetBaseline) {
+    writeBaseline("manual-reset", currentState);
+    logAudit("baseline_reset", { paths: Object.keys(currentState).length });
+    process.stdout.write("CPB finish check baseline reset.\n");
+    process.exit(0);
+  }
+
+  let baseline = loadBaseline();
+  if (!baseline) {
+    baseline = writeBaseline("implicit-init", currentState);
+    logAudit("baseline_init", { mode: "implicit-init", paths: Object.keys(currentState).length });
+    process.stdout.write("CPB finish check baseline initialized. Run the command again near task end.\n");
+    process.exit(0);
+  }
+
+  const changedPaths = diffSinceBaseline(baseline.state ?? {}, currentState);
+  if (changedPaths.length === 0) {
+    process.stdout.write("CPB finish check: no unreviewed repo changes since last checkpoint.\n");
+    process.exit(0);
+  }
+
+  const sharedCareerPaths = changedPaths.filter(isSharedCareerRelPath);
+  const nonSharedPaths = changedPaths.filter((relPath) => !isSharedCareerRelPath(relPath));
+
+  if (sharedCareerPaths.length > 0 && !allowSharedReason) {
+    process.stderr.write("CPB finish check blocked: shared career docs changed without explicit publish approval.\n");
+    for (const relPath of sharedCareerPaths) {
+      process.stderr.write(`- ${relPath}\n`);
+    }
+    process.stderr.write("\nShared career docs are publish targets, not default draft targets.\n");
+    process.stderr.write("If the user explicitly requested a shared/published version, rerun with:\n");
+    process.stderr.write(`  node ${usageScript} --allow-shared-career-publish "user explicitly requested shared publish"\n`);
+    process.exit(3);
+  }
+
+  const memoryFiles = [
+    ...collectRecentMemoryFiles(globalBrain, "global", baseline.updatedAt),
+    ...collectRecentMemoryFiles(projectBrain, "project", baseline.updatedAt),
+    ...collectRecentMemoryFiles(deviceBrain, "device", baseline.updatedAt),
+  ];
+  if (memoryFiles.length > 0) {
+    writeBaseline("lesson-recorded", currentState);
+    logAudit("finish_check_pass", {
+      mode: "lesson-recorded",
+      changedPaths,
+      memoryFiles,
+      sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
+    });
+    process.stdout.write("CPB finish check: recent durable lesson found. Baseline advanced.\n");
+    for (const item of memoryFiles) {
+      process.stdout.write(`- ${item}\n`);
+    }
+    process.exit(0);
+  }
+
+  if (sharedCareerPaths.length > 0 && nonSharedPaths.length === 0 && allowSharedReason) {
+    writeBaseline("allow-shared-career-publish", currentState);
+    logAudit("finish_check_ack_shared_publish", {
+      changedPaths,
+      sharedCareerPaths,
+      reason: allowSharedReason,
+    });
+    process.stdout.write(`CPB finish check: shared career publish acknowledged. Reason: ${allowSharedReason}\n`);
+    process.exit(0);
+  }
+
+  if (allowReason) {
+    writeBaseline("allow-no-lesson", currentState);
+    logAudit("finish_check_ack", {
+      changedPaths,
+      reason: allowReason,
+      sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
+    });
+    process.stdout.write(`CPB finish check: acknowledged with no lesson. Reason: ${allowReason}\n`);
+    process.exit(0);
+  }
+
+  process.stderr.write("CPB finish check warning: repo changes detected since last checkpoint, but no new durable lesson was recorded.\n");
+  for (const relPath of changedPaths) {
+    process.stderr.write(`- ${relPath}\n`);
+  }
+  process.stderr.write("\nIf this task produced a reusable lesson, queue one with:\n");
+  process.stderr.write(`  node ${logLearningUsageScript} --skill <skill-name> [--surface <surface>] [--env <env>] --topic <topic> --lesson <lesson_name> --summary "..." --problem "..." --root-cause "..." --fix "..." --evidence "..."\n`);
+  process.stderr.write("  Or use --role <general|frontend|backend|design|security|testing|platform|content|growth|education>.\n");
+  process.stderr.write("  Add --scope global if the lesson should help in other repos too.\n");
+  process.stderr.write("  Add --scope device if the lesson is only for this machine or local environment.\n");
+  if (sharedCareerPaths.length > 0) {
+    process.stderr.write("  Shared career doc changes were detected. Add --allow-shared-career-publish if the user explicitly requested publish.\n");
+  }
+  process.stderr.write("If no lesson is warranted, acknowledge it with:\n");
+  process.stderr.write(`  node ${usageScript} --allow-no-lesson "reason"\n`);
+  process.exit(2);
 }
 
-if (sharedCareerPaths.length > 0 && nonSharedPaths.length === 0 && allowSharedReason) {
-  writeBaseline("allow-shared-career-publish", currentState);
-  logAudit("finish_check_ack_shared_publish", {
-    changedPaths,
-    sharedCareerPaths,
-    reason: allowSharedReason,
-  });
-  writeStdout(`CPB finish check: shared career publish acknowledged. Reason: ${allowSharedReason}\n`);
-  process.exit(0);
+if (process.argv[1] && path.resolve(process.argv[1]) === currentFilePath) {
+  runCli();
 }
-
-if (allowReason) {
-  writeBaseline("allow-no-lesson", currentState);
-  logAudit("finish_check_ack", {
-    changedPaths,
-    reason: allowReason,
-    sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
-  });
-  writeStdout(`CPB finish check: acknowledged with no lesson. Reason: ${allowReason}\n`);
-  process.exit(0);
-}
-
-writeStderr("CPB finish check warning: repo changes detected since last checkpoint, but no new durable lesson was recorded.\n");
-for (const relPath of changedPaths) {
-  writeStderr(`- ${relPath}\n`);
-}
-writeStderr("\nIf this task produced a reusable lesson, queue one with:\n");
-writeStderr("  node scripts/cpb-log-learning.mjs --skill <skill-name> [--surface <surface>] [--env <env>] --topic <topic> --lesson <lesson_name> --summary \"...\" --problem \"...\" --root-cause \"...\" --fix \"...\" --evidence \"...\"\n");
-writeStderr("  Or use --role <general|frontend|backend|design|security|testing|platform|content|growth|education>.\n");
-writeStderr("  Add --scope global if the lesson should help in other repos too.\n");
-writeStderr("  Add --scope device if the lesson is only for this machine or local environment.\n");
-if (sharedCareerPaths.length > 0) {
-  writeStderr("  Shared career doc changes were detected. Add --allow-shared-career-publish if the user explicitly requested publish.\n");
-}
-writeStderr("If no lesson is warranted, acknowledge it with:\n");
-writeStderr("  node scripts/cpb-finish-check.mjs --allow-no-lesson \"reason\"\n");
-process.exit(2);

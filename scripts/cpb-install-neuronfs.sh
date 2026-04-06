@@ -2,13 +2,11 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-paths.sh"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-neuronfs-prebuilt.sh"
-cpdb_export_paths
 
-repo_root="$CPB_REPO_ROOT"
+repo_root="${CPB_REPO_ROOT:-$(cpb_repo_root)}"
+project_id="${CPB_PROJECT_ID:-$(cpb_project_id "$repo_root")}"
 install_dir_default="$repo_root/.tools/neuronfs"
 install_dir="${NEURONFS_INSTALL_DIR:-$install_dir_default}"
 repo_url="${NEURONFS_REPO_URL:-https://github.com/rhino-acoustic/NeuronFS.git}"
@@ -21,10 +19,15 @@ prebuilt_base_url="${NEURONFS_PREBUILT_BASE_URL:-}"
 prebuilt_url="${NEURONFS_PREBUILT_URL:-}"
 require_prebuilt_checksum="${NEURONFS_PREBUILT_REQUIRE_CHECKSUM:-1}"
 prebuilt_checksum_url="${NEURONFS_PREBUILT_CHECKSUM_URL:-}"
+usage_script="${CPB_INSTALL_USAGE_SCRIPT:-scripts/cpb-install-neuronfs.sh}"
+patch_script="${CPB_INSTALL_PATCH_SCRIPT:-$repo_root/scripts/cpb-patch-neuronfs-hook.mjs}"
+rebuild_script_hint="${CPB_INSTALL_REBUILD_SCRIPT_HINT:-scripts/cpb-rebuild-runtime-brain.sh}"
+rebuild_args_hint="${CPB_INSTALL_REBUILD_ARGS_HINT:---init-global --init-project --init-device}"
+runtime_brain_hint="${CPB_INSTALL_RUNTIME_BRAIN_HINT:-${CPB_RUNTIME_BRAIN:-$repo_root/.agent/cross-project-brain/$project_id/runtime-brain/brain_v4}}"
 
 usage() {
   cat <<EOF
-Usage: bash scripts/cpb-install-neuronfs.sh
+Usage: bash $usage_script
 
 Environment overrides:
   NEURONFS_INSTALL_DIR       default: $install_dir_default
@@ -220,7 +223,7 @@ fi
 
 hook_file="$install_dir/runtime/v4-hook.cjs"
 if [[ -f "$hook_file" ]]; then
-  node "$repo_root/scripts/cpb-patch-neuronfs-hook.mjs" "$hook_file"
+  env -u NODE_OPTIONS node "$patch_script" "$hook_file"
 else
   echo "NeuronFS install failed: hook file not found at $hook_file" >&2
   exit 1
@@ -234,13 +237,13 @@ if [[ ! -x "$binary_path" ]]; then
     if [[ -n "$build_error" ]]; then
       echo "Reason: $build_error" >&2
     fi
-    echo "Install Go, publish/provide a prebuilt NeuronFS CLI, and rerun bash scripts/cpb-install-neuronfs.sh, or set NEURONFS_ALLOW_HOOK_ONLY=1 for a hook-only install." >&2
+    echo "Install Go, publish/provide a prebuilt NeuronFS CLI, and rerun bash $usage_script, or set NEURONFS_ALLOW_HOOK_ONLY=1 for a hook-only install." >&2
     exit 2
   fi
 fi
 
 cat <<EOF
-NeuronFS installed for CPB.
+NeuronFS installed.
 
 Install dir: $install_dir
 Main head:   $main_head
@@ -263,6 +266,7 @@ Expected paths:
   Binary: $binary_path
 
 Next steps:
-  1. bash scripts/cpb-rebuild-runtime-brain.sh --init-global --init-project --init-device
-  2. source ~/.bashrc
+  1. bash $rebuild_script_hint $rebuild_args_hint
+  2. export NEURONFS_BRAIN="$runtime_brain_hint"
+  3. export NODE_OPTIONS="--require $install_dir/runtime/v4-hook.cjs"
 EOF

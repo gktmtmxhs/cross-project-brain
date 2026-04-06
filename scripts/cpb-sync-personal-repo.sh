@@ -2,11 +2,13 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-paths.sh"
-cpdb_export_paths
 
+repo_root="${CPB_REPO_ROOT:-$(cpb_repo_root)}"
+operator_id="${CPB_OPERATOR_ID:-$(cpb_detect_operator_id "$repo_root")}"
 personal_repo="${CPB_PERSONAL_REPO:-}"
+tracked_operators_root="${CPB_TRACKED_PROJECT_OPERATORS_ROOT:-$(cpb_tracked_project_operators_root_default "$repo_root")}"
+
 if [[ -z "$personal_repo" || ! -d "$personal_repo/.git" ]]; then
   exit 0
 fi
@@ -14,6 +16,39 @@ fi
 if [[ "${CPB_AUTO_PUSH_PERSONAL:-1}" == "0" ]]; then
   exit 0
 fi
+
+sync_tracked_project_overlay_into_personal_repo() {
+  local configured_project_brain="${CPB_PROJECT_BRAIN:-}"
+  local tracked_source=""
+  local personal_project_root="$personal_repo/brains/project-operators"
+
+  if [[ "${CPB_SYNC_TRACKED_PROJECT_OVERLAY:-1}" == "0" ]]; then
+    return 0
+  fi
+
+  if [[ -z "$configured_project_brain" ]] || ! cpb_path_is_within "$configured_project_brain" "$personal_project_root"; then
+    return 0
+  fi
+
+  tracked_source="$(cpb_resolve_tracked_project_brain_source "$tracked_operators_root" "$operator_id")"
+  if [[ -z "$tracked_source" || ! -d "$tracked_source" ]]; then
+    return 0
+  fi
+
+  if ! cpb_dir_has_contents "$tracked_source"; then
+    return 0
+  fi
+
+  if [[ "$tracked_source" == "$configured_project_brain" ]]; then
+    return 0
+  fi
+
+  # Mirror legacy tracked overlays before the personal repo sync runs.
+  mkdir -p "$configured_project_brain"
+  rsync -a "$tracked_source"/ "$configured_project_brain"/
+}
+
+sync_tracked_project_overlay_into_personal_repo
 
 timestamp="$(date +%Y-%m-%dT%H:%M:%S%z)"
 

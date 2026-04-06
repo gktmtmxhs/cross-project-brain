@@ -3,15 +3,24 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-paths.sh"
+source "$script_dir/cpb-profiles.sh"
+command_alias="${CPB_PROFILE_COMMAND_ALIAS:-cpb}"
+doctor_script="${CPB_PROFILE_DOCTOR_SCRIPT:-$script_dir/cpb-doctor.sh}"
+setup_operator_script="${CPB_PROFILE_SETUP_OPERATOR_SCRIPT:-$script_dir/cpb-setup-operator.sh}"
+setup_personal_repo_script="${CPB_PROFILE_SETUP_PERSONAL_REPO_SCRIPT:-$script_dir/cpb-setup-personal-repo.sh}"
+setup_git_hooks_script="${CPB_PROFILE_SETUP_GIT_HOOKS_SCRIPT:-$script_dir/cpb-setup-git-hooks.sh}"
+setup_shell_script="${CPB_PROFILE_SETUP_SHELL_SCRIPT:-$script_dir/cpb-setup-shell.sh}"
+install_script="${CPB_PROFILE_INSTALL_SCRIPT:-$script_dir/cpb-install-neuronfs.sh}"
+install_go_script="${CPB_PROFILE_INSTALL_GO_SCRIPT:-$script_dir/cpb-install-go.sh}"
+rebuild_script="${CPB_PROFILE_REBUILD_SCRIPT:-$script_dir/cpb-rebuild-runtime-brain.sh}"
 
 usage() {
   cat <<EOF
 Usage:
-  cpb [--repo-root <path>] profiles
-  cpb [--repo-root <path>] status
-  cpb [--repo-root <path>] apply <profile> [options]
+  $command_alias [--repo-root <path>] profiles
+  $command_alias [--repo-root <path>] status
+  $command_alias [--repo-root <path>] apply <profile> [options]
 
 Profiles:
   team-local      team/shared repo, project brain local-only under .agent/
@@ -28,94 +37,11 @@ Options for apply:
   --skip-rebuild                 skip runtime brain rebuild
 
 Examples:
-  cpb profiles
-  cpb status
-  cpb apply team-local
-  cpb apply team-personal --personal-repo "\$HOME/.cpb-personal"
+  $command_alias profiles
+  $command_alias status
+  $command_alias apply team-local
+  $command_alias apply team-personal --personal-repo "\$HOME/.cpb-personal"
 EOF
-}
-
-print_profiles() {
-  cat <<EOF
-team-local:
-  - current repo is shared with a team
-  - global lessons sync through your private CPB repo
-  - project lessons stay local on this machine
-
-team-personal:
-  - current repo is shared with a team
-  - global and project lessons sync through your private CPB repo
-  - team repo stays clean
-
-solo-tracked:
-  - current repo is your own repo
-  - project lessons are committed with the project itself
-  - global lessons still sync through your private CPB repo
-
-solo-personal:
-  - current repo is your own repo
-  - project and global lessons sync through your private CPB repo
-  - useful when you want the same project learning on multiple machines without mixing it into the repo history
-EOF
-}
-
-expand_path() {
-  local value="$1"
-
-  if [[ "$value" == "~" ]]; then
-    value="$HOME"
-  elif [[ "$value" == ~/* ]]; then
-    value="$HOME/${value#~/}"
-  fi
-
-  if [[ "$value" != /* ]]; then
-    value="$PWD/$value"
-  fi
-
-  printf '%s\n' "$value"
-}
-
-resolve_operator() {
-  local provided="${1:-}"
-  local detected=""
-
-  if [[ -n "$provided" ]]; then
-    printf '%s\n' "$(cpdb_sanitize_operator_id "$provided")"
-    return 0
-  fi
-
-  if command -v gh >/dev/null 2>&1; then
-    detected="$(gh api user --jq .login 2>/dev/null || true)"
-  fi
-
-  if [[ -z "$detected" ]]; then
-    detected="$(cpdb_detect_operator_id "$repo_root")"
-  fi
-
-  printf '%s\n' "$(cpdb_sanitize_operator_id "$detected")"
-}
-
-project_brain_for_mode() {
-  local mode="$1"
-  local operator="$2"
-  local personal_repo="$3"
-  local project_id
-  project_id="${CPB_PROJECT_ID:-$(basename "$repo_root")}"
-
-  case "$mode" in
-    tracked)
-      printf '%s\n' "$repo_root/brains/project-operators/$operator/brain_v4"
-      ;;
-    local)
-      printf '%s\n' "$repo_root/.agent/cross-project-brain/$project_id/project-brain/brain_v4"
-      ;;
-    personal)
-      printf '%s\n' "$personal_repo/brains/project-operators/$operator/$project_id/brain_v4"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 run_status() {
@@ -128,11 +54,11 @@ run_status() {
     CPB_OPERATOR="$operator" \
     CPB_PERSONAL_REPO="$personal_repo" \
     CPB_PROJECT_BRAIN="$project_brain" \
-    bash "$script_dir/cpb-doctor.sh" --repo-root "$repo_root"
+    bash "$doctor_script" --repo-root "$repo_root"
     return 0
   fi
 
-  bash -ic "cd '$repo_root' && bash '$script_dir/cpb-doctor.sh' --repo-root '$repo_root'"
+  bash -ic "cd '$repo_root' && bash '$doctor_script' --repo-root '$repo_root'"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -151,7 +77,7 @@ command_name="${1:-}"
 
 case "$command_name" in
   profiles|list)
-    print_profiles
+    cpb_print_profiles
     exit 0
     ;;
   status|doctor)
@@ -186,28 +112,6 @@ auto_install_go=1
 skip_rebuild=0
 shared_repo=0
 project_brain_mode=""
-
-case "$profile" in
-  team-local)
-    shared_repo=1
-    project_brain_mode="local"
-    ;;
-  team-personal)
-    shared_repo=1
-    project_brain_mode="personal"
-    ;;
-  solo-tracked)
-    project_brain_mode="tracked"
-    ;;
-  solo-personal)
-    project_brain_mode="personal"
-    ;;
-  *)
-    echo "Unsupported profile: $profile" >&2
-    print_profiles >&2
-    exit 1
-    ;;
-esac
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -247,9 +151,28 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-operator="$(resolve_operator "$operator")"
-personal_repo="$(expand_path "$personal_repo")"
-project_brain_path="$(project_brain_for_mode "$project_brain_mode" "$operator" "$personal_repo")"
+if ! cpb_apply_profile_settings "$profile"; then
+  echo "Unsupported profile: $profile" >&2
+  cpb_print_profiles >&2
+  exit 1
+fi
+
+shared_repo="$CPB_PROFILE_SHARED_REPO"
+project_brain_mode="$CPB_PROFILE_PROJECT_BRAIN_MODE"
+
+operator="$(cpb_resolve_operator "$repo_root" "$operator")"
+personal_repo="$(cpb_normalize_personal_repo_path "$personal_repo")"
+project_id="${CPB_PROJECT_ID:-$(cpb_project_id "$repo_root")}"
+tracked_project_brain_root="${CPB_PROFILE_TRACKED_PROJECT_OPERATORS_ROOT:-${CPB_TRACKED_PROJECT_OPERATORS_ROOT:-$(cpb_tracked_project_operators_root_default "$repo_root")}}"
+tracked_project_brain="$(cpb_tracked_project_brain_path "$tracked_project_brain_root" "$operator")"
+local_project_brain="${CPB_PROFILE_LOCAL_PROJECT_BRAIN:-$repo_root/.agent/cross-project-brain/$project_id/project-brain/brain_v4}"
+personal_project_brain="$(cpb_personal_project_brain_path "$personal_repo" "$project_id" "$operator")"
+project_brain_path="$(cpb_project_brain_for_mode "$project_brain_mode" "$tracked_project_brain" "$local_project_brain" "$personal_project_brain")"
+hooks_dir="${CPB_PROFILE_HOOKS_DIR:-$repo_root/.githooks}"
+post_refresh_script="${CPB_PROFILE_POST_REFRESH_SCRIPT:-scripts/cpb-refresh-after-git.sh}"
+pre_push_script="${CPB_PROFILE_PRE_PUSH_SCRIPT:-scripts/cpb-sync-personal-repo.sh}"
+rebuild_args_string="${CPB_PROFILE_REBUILD_ARGS:---init-global --init-project --init-device}"
+read -r -a rebuild_args <<< "$rebuild_args_string"
 
 printf 'Applying CPB profile.\n'
 printf '  Repo:          %s\n' "$repo_root"
@@ -257,6 +180,10 @@ printf '  Profile:       %s\n' "$profile"
 printf '  Operator:      %s\n' "$operator"
 printf '  Personal repo: %s\n' "$personal_repo"
 printf '  Project brain: %s\n' "$project_brain_path"
+
+CPB_REPO_ROOT="$repo_root" \
+CPB_OPERATOR="$operator" \
+bash "$setup_operator_script" "$operator"
 
 personal_repo_args=("$personal_repo" "--repo-root" "$repo_root" "--project-brain-mode" "$project_brain_mode")
 if [[ "$shared_repo" -eq 1 ]]; then
@@ -267,15 +194,21 @@ if [[ -n "$create_remote_mode" ]]; then
   CPB_REPO_ROOT="$repo_root" \
   CPB_OPERATOR="$operator" \
   CPB_CREATE_PERSONAL_REMOTE="$create_remote_mode" \
-  bash "$script_dir/cpb-setup-personal-repo.sh" "${personal_repo_args[@]}"
+  bash "$setup_personal_repo_script" "${personal_repo_args[@]}"
 else
   CPB_REPO_ROOT="$repo_root" \
   CPB_OPERATOR="$operator" \
-  bash "$script_dir/cpb-setup-personal-repo.sh" "${personal_repo_args[@]}"
+  bash "$setup_personal_repo_script" "${personal_repo_args[@]}"
 fi
 
-bash "$script_dir/cpb-setup-git-hooks.sh" --repo-root "$repo_root"
-bash "$script_dir/cpb-setup-shell.sh" --repo-root "$repo_root"
+bash "$setup_git_hooks_script" \
+  --repo-root "$repo_root" \
+  --hooks-dir "$hooks_dir" \
+  --post-refresh-script "$post_refresh_script" \
+  --pre-push-script "$pre_push_script"
+
+CPB_REPO_ROOT="$repo_root" \
+bash "$setup_shell_script"
 
 if [[ "$skip_install" -eq 0 ]]; then
   run_neuronfs_install() {
@@ -283,7 +216,7 @@ if [[ "$skip_install" -eq 0 ]]; then
     CPB_OPERATOR="$operator" \
     CPB_PERSONAL_REPO="$personal_repo" \
     CPB_PROJECT_BRAIN="$project_brain_path" \
-    bash "$script_dir/cpb-install-neuronfs.sh"
+    bash "$install_script"
   }
 
   set +e
@@ -293,7 +226,7 @@ if [[ "$skip_install" -eq 0 ]]; then
 
   if [[ "$neuronfs_install_rc" -eq 2 ]]; then
     if ! command -v go >/dev/null 2>&1 && [[ "$auto_install_go" -eq 1 ]]; then
-      if bash "$script_dir/cpb-install-go.sh"; then
+      if bash "$install_go_script"; then
         set +e
         run_neuronfs_install
         neuronfs_install_rc=$?
@@ -320,7 +253,7 @@ if [[ "$skip_install" -eq 0 ]]; then
       CPB_PERSONAL_REPO="$personal_repo" \
       CPB_PROJECT_BRAIN="$project_brain_path" \
       NEURONFS_ALLOW_HOOK_ONLY=1 \
-      bash "$script_dir/cpb-install-neuronfs.sh"
+      bash "$install_script"
     elif [[ "$neuronfs_install_rc" -ne 0 ]]; then
       exit "$neuronfs_install_rc"
     fi
@@ -334,7 +267,7 @@ if [[ "$skip_rebuild" -eq 0 ]]; then
   CPB_OPERATOR="$operator" \
   CPB_PERSONAL_REPO="$personal_repo" \
   CPB_PROJECT_BRAIN="$project_brain_path" \
-  bash "$script_dir/cpb-rebuild-runtime-brain.sh" --init-global --init-project --init-device
+  bash "$rebuild_script" "${rebuild_args[@]}"
 fi
 
 printf '\nProfile apply complete. Current status:\n\n'
