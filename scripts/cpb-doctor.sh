@@ -11,7 +11,7 @@ usage() {
   cat <<EOF
 Usage: bash scripts/cpb-doctor.sh [--repo-root <path>]
 
-Shows the current Cross-Project Brain wiring:
+Shows the current CPB wiring:
   - operator identity
   - GitHub CLI auth state
   - personal repo sync readiness
@@ -40,14 +40,25 @@ while [[ $# -gt 0 ]]; do
 done
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-paths.sh"
+source "$script_dir/cpb-setup-lib.sh"
 
 if [[ -z "$repo_root" ]]; then
-  repo_root="$(cpdb_repo_root)"
+  repo_root="$(cpb_repo_root)"
 fi
 
-cpdb_export_paths "$repo_root"
+if [[ -z "${CPB_REPO_ROOT:-}" ]]; then
+  export CPB_REPO_ROOT="$repo_root"
+fi
+if [[ -z "${CPB_OPERATOR_ID:-}" ]]; then
+  export CPB_OPERATOR_ID="$(cpb_detect_operator_id "$repo_root" "${CPB_OPERATOR:-}")"
+fi
+if [[ -z "${CPB_OPERATOR:-}" ]]; then
+  export CPB_OPERATOR="$CPB_OPERATOR_ID"
+fi
+if [[ -z "${CPB_TRACKED_PROJECT_OPERATORS_ROOT:-}" ]]; then
+  export CPB_TRACKED_PROJECT_OPERATORS_ROOT="$(cpb_tracked_project_operators_root_default "$repo_root")"
+fi
 
 is_tty=0
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -80,6 +91,13 @@ summary_line() {
   printf '  %-16s %s\n' "$1" "$2"
 }
 
+print_row() {
+  local level="$1"
+  local label="$2"
+  local value="$3"
+  printf '  [%s] %-24s %s\n' "$(status_tag "$level")" "$label" "$value"
+}
+
 status_tag() {
   local level="$1"
   case "$level" in
@@ -93,13 +111,6 @@ status_tag() {
       printf '%s%s%s' "$blue_style" "INFO" "$reset_style"
       ;;
   esac
-}
-
-print_row() {
-  local level="$1"
-  local label="$2"
-  local value="$3"
-  printf '  [%s] %-24s %s\n' "$(status_tag "$level")" "$label" "$value"
 }
 
 report() {
@@ -134,7 +145,7 @@ warn() {
   report warn "$1" "$2"
 }
 
-path_scope() {
+cpb_path_scope() {
   local candidate="$1"
 
   if [[ -n "${CPB_PERSONAL_REPO:-}" && "$candidate" == "${CPB_PERSONAL_REPO}"* ]]; then
@@ -142,7 +153,7 @@ path_scope() {
     return 0
   fi
 
-  if [[ "$candidate" == "${CPB_AGENT_ROOT}"* ]]; then
+  if [[ -n "${CPB_AGENT_ROOT:-}" && "$candidate" == "${CPB_AGENT_ROOT}"* ]]; then
     printf 'local-only'
     return 0
   fi
@@ -159,7 +170,7 @@ report_dir() {
   local label="$1"
   local candidate="$2"
   local scope
-  scope="$(path_scope "$candidate")"
+  scope="$(cpb_path_scope "$candidate")"
 
   if [[ -d "$candidate" ]]; then
     ok "$label" "$candidate ($scope)"
@@ -168,10 +179,10 @@ report_dir() {
   fi
 }
 
-project_brain_mode() {
+cpb_project_brain_mode() {
   local candidate="$1"
 
-  if [[ "$candidate" == "${CPB_AGENT_ROOT}"* ]]; then
+  if [[ -n "${CPB_AGENT_ROOT:-}" && "$candidate" == "${CPB_AGENT_ROOT}"* ]]; then
     printf 'local-only'
     return 0
   fi
@@ -189,7 +200,7 @@ project_brain_mode() {
   printf 'custom'
 }
 
-personal_repo_bootstrap_state() {
+cpb_personal_repo_bootstrap_state() {
   local repo_path="$1"
   local origin_url="$2"
   local current_branch=""
@@ -244,7 +255,7 @@ upstream_ref=""
 if [[ -n "${CPB_PERSONAL_REPO:-}" ]]; then
   if [[ -d "$CPB_PERSONAL_REPO/.git" ]]; then
     origin_url="$(git -C "$CPB_PERSONAL_REPO" remote get-url origin 2>/dev/null || true)"
-    personal_bootstrap_summary="$(personal_repo_bootstrap_state "$CPB_PERSONAL_REPO" "$origin_url")"
+    personal_bootstrap_summary="$(cpb_personal_repo_bootstrap_state "$CPB_PERSONAL_REPO" "$origin_url")"
     if git -C "$CPB_PERSONAL_REPO" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
       upstream_ref="$(git -C "$CPB_PERSONAL_REPO" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
       personal_sync_summary="ready"
@@ -283,8 +294,8 @@ fi
 
 neuronfs_summary="missing"
 neuronfs_summary_level="warn"
-if [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
-  if [[ -f "$CPB_NEURONFS_INSTALL_DIR/neuronfs" ]]; then
+if [[ -d "$NEURONFS_INSTALL_DIR" ]]; then
+  if [[ -f "$NEURONFS_INSTALL_DIR/neuronfs" ]]; then
     neuronfs_summary="cli installed"
     neuronfs_summary_level="ok"
   else
@@ -293,7 +304,7 @@ if [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
   fi
 fi
 
-refresh_log="$CPB_AGENT_ROOT/logs/git-hook-refresh.log"
+refresh_log="${CPB_AGENT_ROOT:-$CPB_REPO_ROOT/.agent/cross-project-brain/$(basename "$CPB_REPO_ROOT")}/logs/git-hook-refresh.log"
 last_refresh_summary="no refresh log yet"
 last_refresh_level="info"
 last_log_line=""
@@ -308,7 +319,7 @@ if [[ -f "$refresh_log" ]]; then
   fi
 fi
 
-project_mode_summary="$(project_brain_mode "$CPB_PROJECT_BRAIN")"
+project_mode_summary="$(cpb_project_brain_mode "${CPB_PROJECT_BRAIN:-}")"
 overall_snapshot="ready"
 overall_snapshot_level="ok"
 if [[ "$personal_sync_level" == "warn" || "$hooks_summary_level" == "warn" || "$neuronfs_summary_level" == "warn" ]]; then
@@ -321,7 +332,6 @@ line "${dim_style}Repo health snapshot for $(basename "$CPB_REPO_ROOT")${reset_s
 
 heading "Snapshot"
 summary_line "Repo" "$CPB_REPO_ROOT"
-summary_line "Project" "$CPB_PROJECT_ID"
 summary_line "Operator" "$CPB_OPERATOR_ID"
 summary_line "GitHub CLI" "[$(status_tag "$gh_summary_level")] $gh_summary"
 summary_line "Project Brain" "$project_mode_summary"
@@ -333,7 +343,6 @@ summary_line "Overall" "[$(status_tag "$overall_snapshot_level")] $overall_snaps
 
 heading "Identity"
 info "repo root" "$CPB_REPO_ROOT"
-info "project id" "$CPB_PROJECT_ID"
 info "operator (GitHub username)" "$CPB_OPERATOR_ID"
 info "recommended personal repo" "${CPB_OPERATOR_ID}/${personal_repo_name}"
 
@@ -353,13 +362,13 @@ else
 fi
 
 heading "Brain paths"
-report_dir "team brain" "$CPB_TEAM_BRAIN"
-report_dir "global brain" "$CPB_GLOBAL_BRAIN"
-report_dir "project brain" "$CPB_PROJECT_BRAIN"
-info "project brain mode" "$project_mode_summary"
-report_dir "device brain" "$CPB_DEVICE_BRAIN"
-report_dir "runtime brain" "$CPB_RUNTIME_BRAIN"
-report_dir "career docs root" "$CPB_CAREER_DOCS_ROOT"
+report_dir "team brain" "${CPB_TEAM_BRAIN:-}"
+report_dir "global brain" "${CPB_GLOBAL_BRAIN:-}"
+report_dir "project brain" "${CPB_PROJECT_BRAIN:-}"
+info "project brain mode" "$(cpb_project_brain_mode "${CPB_PROJECT_BRAIN:-}")"
+report_dir "device brain" "${CPB_DEVICE_BRAIN:-}"
+report_dir "runtime brain" "${CPB_RUNTIME_BRAIN:-}"
+report_dir "career docs root" "${CPB_CAREER_DOCS_ROOT:-}"
 
 heading "Personal sync"
 if [[ -z "${CPB_PERSONAL_REPO:-}" ]]; then
@@ -403,7 +412,7 @@ fi
 
 heading "Git hooks"
 if [[ -z "$configured_hooks_path" ]]; then
-  warn "hooks path" "git core.hooksPath is not set; run bash scripts/cpb-setup-git-hooks.sh"
+  warn "hooks path" "git core.hooksPath is not set; run bash scripts/setup-neuronfs-git-hooks.sh"
 elif [[ "$configured_hooks_path" == "$expected_hooks_path" ]]; then
   ok "hooks path" "$configured_hooks_path"
 else
@@ -420,18 +429,18 @@ for hook_name in post-merge post-checkout post-rewrite pre-push; do
 done
 
 heading "NeuronFS"
-if [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
-  ok "install dir" "$CPB_NEURONFS_INSTALL_DIR"
+if [[ -d "$NEURONFS_INSTALL_DIR" ]]; then
+  ok "install dir" "$NEURONFS_INSTALL_DIR"
 else
-  warn "install dir" "$CPB_NEURONFS_INSTALL_DIR (missing)"
+  warn "install dir" "$NEURONFS_INSTALL_DIR (missing)"
 fi
 
-if [[ -f "$CPB_NEURONFS_INSTALL_DIR/neuronfs" ]]; then
-  ok "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs"
-elif [[ -d "$CPB_NEURONFS_INSTALL_DIR" ]]; then
-  warn "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs (missing; hook-only mode is active, so CPB autogrowth is disabled until Go or a prebuilt NeuronFS CLI is installed)"
+if [[ -f "$NEURONFS_INSTALL_DIR/neuronfs" ]]; then
+  ok "neuronfs cli" "$NEURONFS_INSTALL_DIR/neuronfs"
+elif [[ -d "$NEURONFS_INSTALL_DIR" ]]; then
+  warn "neuronfs cli" "$NEURONFS_INSTALL_DIR/neuronfs (missing; hook-only mode is active, so CPB autogrowth is disabled until Go or a prebuilt NeuronFS CLI is installed)"
 else
-  warn "neuronfs cli" "$CPB_NEURONFS_INSTALL_DIR/neuronfs (missing)"
+  warn "neuronfs cli" "$NEURONFS_INSTALL_DIR/neuronfs (missing)"
 fi
 
 heading "Recent activity"
@@ -455,9 +464,3 @@ else
   print_row warn "overall" "$warning_count warning(s); review the items above"
 fi
 print_row info "counts" "$reported_ok_count ok / $reported_info_count info / $reported_warning_count warn"
-
-if [[ -z "${CPB_PERSONAL_REPO:-}" ]]; then
-  heading "Suggested next step"
-  line "  cpb profiles"
-  line "  cpb apply team-local"
-fi

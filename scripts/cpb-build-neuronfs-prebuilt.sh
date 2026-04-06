@@ -3,12 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "$script_dir/cpb-paths.sh"
-# shellcheck disable=SC1091
 source "$script_dir/cpb-neuronfs-prebuilt.sh"
-cpdb_export_paths
 
-repo_root="$CPB_REPO_ROOT"
+repo_root="$(cd "$script_dir/.." && pwd)"
 install_dir_default="$repo_root/.tools/neuronfs"
 install_dir="${NEURONFS_INSTALL_DIR:-$install_dir_default}"
 repo_url="${NEURONFS_REPO_URL:-https://github.com/rhino-acoustic/NeuronFS.git}"
@@ -103,14 +100,12 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 cp "$install_dir/$binary_name" "$tmpdir/$binary_name"
 
+tar -C "$tmpdir" -czf "$asset_path" "$binary_name"
 if command -v sha256sum >/dev/null 2>&1; then
-  tar -C "$tmpdir" -czf "$asset_path" "$binary_name"
   (
     cd "$output_dir"
     sha256sum "$asset_name" >"$checksum_path"
   )
-else
-  tar -C "$tmpdir" -czf "$asset_path" "$binary_name"
 fi
 
 cat <<EOF

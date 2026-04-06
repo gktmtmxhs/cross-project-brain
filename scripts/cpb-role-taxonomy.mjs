@@ -51,20 +51,36 @@ const envAliases = {
   kubernetes: "k8s",
 };
 
-export const skillRoleMap = {
-  "agents-orchestrator": "general",
-  "frontend-developer": "frontend",
-  "backend-architect": "backend",
-  "api-tester": "testing",
-  "ui-ux-pro-max": "design",
-  "security-engineer": "security",
-  "reality-checker": "platform",
-  "content-creator": "content",
-  "growth-hacker": "growth",
-  "behavioral-nudge-engine": "growth",
-  "seo-specialist": "growth",
-  "social-media-strategist": "growth",
-  "practical-music-educator": "education",
+const careerTrackAliases = {
+  general: "general",
+  frontend: "frontend",
+  front: "frontend",
+  front_end: "frontend",
+  web: "frontend",
+  backend: "backend",
+  back: "backend",
+  api: "backend",
+  fullstack: "fullstack",
+  "full_stack": "fullstack",
+  design: "design",
+  ux: "design",
+  product: "product",
+  platform: "platform",
+  infra: "platform",
+  ops: "platform",
+  security: "security",
+  sec: "security",
+  testing: "testing",
+  qa: "testing",
+  data: "data",
+  ai: "ai",
+  ml: "ai",
+  mobile: "mobile",
+  ios: "mobile",
+  android: "mobile",
+  content: "content",
+  growth: "growth",
+  education: "education",
 };
 
 const roleAliases = {
@@ -120,9 +136,32 @@ export function normalizeRole(rawRole, fallback = "general") {
   return roleAliases[key] || fallback;
 }
 
-export function resolveRoleFromSkill(skillName) {
+function parseSkillRoleMap(raw) {
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([key, value]) => typeof key === "string" && typeof value === "string")
+        .map(([key, value]) => [sanitizeSegment(key, ""), normalizeRole(value)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export const skillRoleMap = Object.freeze(parseSkillRoleMap(process.env.CPB_SKILL_ROLE_MAP_JSON || ""));
+
+export function resolveRoleFromSkill(skillName, roleMap = skillRoleMap) {
   const key = sanitizeSegment(skillName, "");
-  return skillRoleMap[key] || null;
+  return roleMap[key] || null;
 }
 
 export function normalizeSurface(rawSurface) {
@@ -141,15 +180,24 @@ export function normalizeEnv(rawEnv) {
   return envAliases[key] || key;
 }
 
+export function normalizeCareerTrack(rawCareerTrack) {
+  if (rawCareerTrack == null || String(rawCareerTrack).trim() === "") {
+    return "";
+  }
+  const key = sanitizeSegment(rawCareerTrack, "");
+  return careerTrackAliases[key] || key;
+}
+
 export function defaultTopicForRole(roleName) {
   return roleDefaults[normalizeRole(roleName)] || roleDefaults.general;
 }
 
-export function buildRolePath({ role, skill, surface, env, topic, lesson, fallbackLesson }) {
+export function buildRolePath({ role, skill, surface, env, topic, lesson, fallbackLesson, careerTrack }) {
   const resolvedRole = normalizeRole(role || resolveRoleFromSkill(skill) || "general");
   const resolvedSurface = normalizeSurface(surface);
   const resolvedEnv = normalizeEnv(env);
   const resolvedTopic = sanitizeSegment(topic, defaultTopicForRole(resolvedRole));
+  const resolvedCareerTrack = normalizeCareerTrack(careerTrack);
   const resolvedLesson = sanitizeSegment(lesson || fallbackLesson, "lesson");
   const segments = ["cortex", resolvedRole];
   if (resolvedSurface) {
@@ -158,6 +206,10 @@ export function buildRolePath({ role, skill, surface, env, topic, lesson, fallba
   if (resolvedEnv) {
     segments.push(resolvedEnv);
   }
-  segments.push(resolvedTopic, resolvedLesson);
+  segments.push(resolvedTopic);
+  if (resolvedCareerTrack) {
+    segments.push(resolvedCareerTrack);
+  }
+  segments.push(resolvedLesson);
   return segments.join("/");
 }

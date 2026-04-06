@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { runtimeBrain } from "./cpb-paths.mjs";
 import {
   buildRolePath,
+  normalizeCareerTrack,
   normalizeEnv,
   normalizeRole,
   normalizeSurface,
@@ -16,10 +17,11 @@ import {
 
 const inboxPath = path.join(runtimeBrain, "_inbox", "corrections.jsonl");
 const currentFilePath = fileURLToPath(import.meta.url);
+const usageScript = process.env.CPB_LOG_LEARNING_USAGE_SCRIPT || "scripts/cpb-log-learning.mjs";
 
 function usage() {
   process.stderr.write(
-    "Usage: node scripts/cpb-log-learning.mjs (--path <neuron-path> | [--role <role> | --skill <skill-name>] [--surface <surface>] [--env <env>] [--topic <topic>] [--lesson <lesson-name>]) --summary <text> [--scope <project|global|device>] [--audience <shared|personal|hiring>] [--language <lang>] [--problem <text>] [--root-cause <text>] [--fix <text>] [--context <text>] [--evidence <text>]... [--counter-add <n>] [--source <name>]\n",
+    `Usage: node ${usageScript} (--path <neuron-path> | [--role <role> | --skill <skill-name>] [--surface <surface>] [--env <env>] [--topic <topic>] [--career-track <track>] [--lesson <lesson-name>]) --summary <text> [--scope <project|global|device>] [--audience <shared|personal|hiring>] [--language <lang>] [--encountered-at <date>] [--resolved-at <date>] [--problem <text>] [--root-cause <text>] [--fix <text>] [--context <text>] [--evidence <text>]... [--counter-add <n>] [--source <name>]\n`,
   );
 }
 
@@ -81,8 +83,20 @@ export function parseArgs(argv) {
         result.lesson = next;
         i += 1;
         break;
+      case "--career-track":
+        result.career_track = next;
+        i += 1;
+        break;
       case "--problem":
         result.problem = next;
+        i += 1;
+        break;
+      case "--encountered-at":
+        result.encountered_at = next;
+        i += 1;
+        break;
+      case "--resolved-at":
+        result.resolved_at = next;
         i += 1;
         break;
       case "--root-cause":
@@ -170,6 +184,28 @@ export function inferAudience(entry) {
   return "shared";
 }
 
+export function inferCareerTrack(entry) {
+  if (entry.career_track) {
+    return normalizeCareerTrack(entry.career_track);
+  }
+
+  const audience = normalizeAudience(entry.audience);
+  if (audience !== "hiring") {
+    return "";
+  }
+
+  if (entry.role && String(entry.role).trim() !== "") {
+    return "";
+  }
+
+  const inferredRole = normalizeRole(resolveRoleFromSkill(entry.skill) || "general");
+  if (inferredRole === "general" || inferredRole === "content") {
+    return "";
+  }
+
+  return normalizeCareerTrack(inferredRole);
+}
+
 export function normalizeLanguage(language, audience) {
   const value = String(language || "").trim().toLowerCase();
   if (value) {
@@ -178,12 +214,43 @@ export function normalizeLanguage(language, audience) {
 
   const normalizedAudience = normalizeAudience(audience);
   if (normalizedAudience === "shared") {
-    return String(process.env.CPB_SHARED_LANGUAGE || "en").trim().toLowerCase();
+    return String(process.env.CPB_SHARED_LANGUAGE || process.env.MUINONE_NEURONFS_SHARED_LANGUAGE || "en").trim().toLowerCase();
   }
   if (normalizedAudience === "hiring") {
-    return String(process.env.CPB_HIRING_LANGUAGE || "ko").trim().toLowerCase();
+    return String(process.env.CPB_HIRING_LANGUAGE || process.env.MUINONE_NEURONFS_HIRING_LANGUAGE || "ko").trim().toLowerCase();
   }
-  return String(process.env.CPB_PERSONAL_LANGUAGE || "ko").trim().toLowerCase();
+  return String(process.env.CPB_PERSONAL_LANGUAGE || process.env.MUINONE_NEURONFS_PERSONAL_LANGUAGE || "ko").trim().toLowerCase();
+}
+
+export function normalizeOptionalDateValue(value) {
+  if (value == null) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+export function resolveRecordedTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || process.env.TZ || "local";
+}
+
+export function formatLocalIsoTimestamp(date = new Date()) {
+  const year = date.getFullYear();
+  const month = padDatePart(date.getMonth() + 1);
+  const day = padDatePart(date.getDate());
+  const hours = padDatePart(date.getHours());
+  const minutes = padDatePart(date.getMinutes());
+  const seconds = padDatePart(date.getSeconds());
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+  const offsetHours = padDatePart(Math.floor(absoluteOffsetMinutes / 60));
+  const offsetRemainderMinutes = padDatePart(absoluteOffsetMinutes % 60);
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${sign}${offsetHours}:${offsetRemainderMinutes}`;
 }
 
 export function resolveLearningPath(entry) {
@@ -196,15 +263,17 @@ export function resolveLearningPath(entry) {
     surface: entry.surface,
     env: entry.env,
     topic: entry.topic,
+    careerTrack: entry.career_track,
     lesson: entry.lesson,
     fallbackLesson: typeof entry.summary === "string" ? sanitizeSegment(entry.summary, "lesson") : "lesson",
   });
 }
 
 export function normalizeEntry(entry) {
+  const now = new Date();
   const normalized = {
     ...entry,
-    ts: new Date().toISOString(),
+    ts: now.toISOString(),
     scope: normalizeScope(entry.scope),
   };
 
@@ -222,10 +291,21 @@ export function normalizeEntry(entry) {
     throw new Error("one of --path, --role, --skill, or --lesson is required");
   }
 
-  normalized.path = resolveLearningPath(normalized);
   normalized.role = normalizeRole(normalized.role || resolveRoleFromSkill(normalized.skill) || "general");
-  normalized.audience = inferAudience(normalized);
+  normalized.audience = inferAudience(entry);
   normalized.language = normalizeLanguage(normalized.language, normalized.audience);
+  normalized.career_track = inferCareerTrack({
+    role: entry.role,
+    skill: entry.skill,
+    audience: normalized.audience,
+    career_track: entry.career_track,
+  });
+  normalized.recorded_at_utc = normalized.ts;
+  normalized.recorded_at = formatLocalIsoTimestamp(now);
+  normalized.recorded_timezone = resolveRecordedTimezone();
+  normalized.encountered_at = normalizeOptionalDateValue(entry.encountered_at);
+  normalized.resolved_at = normalizeOptionalDateValue(entry.resolved_at);
+  normalized.path = resolveLearningPath(normalized);
   if (normalized.surface) {
     normalized.surface = normalizeSurface(normalized.surface);
   }
@@ -237,6 +317,15 @@ export function normalizeEntry(entry) {
   }
   if (normalized.lesson) {
     normalized.lesson = sanitizeSegment(normalized.lesson, "lesson");
+  }
+  if (!normalized.career_track) {
+    delete normalized.career_track;
+  }
+  if (!normalized.encountered_at) {
+    delete normalized.encountered_at;
+  }
+  if (!normalized.resolved_at) {
+    delete normalized.resolved_at;
   }
 
   if (!Number.isInteger(normalized.counter_add) || normalized.counter_add <= 0) {
@@ -262,7 +351,7 @@ export function runCli(argv = process.argv.slice(2)) {
     const entry = queueLearning(parseArgs(argv));
     process.stdout.write(`queued learning [${entry.scope}/${entry.role}] -> ${entry.path}\n`);
   } catch (error) {
-    process.stderr.write(`${error.message}\n`);
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     usage();
     process.exit(1);
   }

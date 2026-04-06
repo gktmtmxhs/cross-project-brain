@@ -1,47 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root=""
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/cpb-paths.sh"
+source "$script_dir/cpb-setup-lib.sh"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --repo-root)
-      repo_root="$2"
-      shift 2
-      ;;
-    -h|--help)
-      cat <<EOF
-Usage: bash scripts/cpb-setup-shell.sh [--repo-root <path>]
+repo_root="${CPB_REPO_ROOT:-$(cpb_repo_root)}"
+bashrc="${CPB_SETUP_SHELL_BASHRC:-$HOME/.bashrc}"
+marker_start="${CPB_SETUP_SHELL_MARKER_START:-# CPB auto-env}"
+marker_end="${CPB_SETUP_SHELL_MARKER_END:-# End CPB auto-env}"
+autoenv_script="${CPB_SETUP_SHELL_AUTOENV_SCRIPT:-$repo_root/scripts/project-brain-autoenv.bash}"
+bin_dir="${CPB_SETUP_SHELL_BIN_DIR:-$repo_root/bin}"
+completion_script="${CPB_SETUP_SHELL_COMPLETION_SCRIPT:-$repo_root/scripts/cpb-completion.bash}"
+label="${CPB_SETUP_SHELL_LABEL:-CPB}"
+usage_script="${CPB_SETUP_SHELL_USAGE_SCRIPT:-scripts/cpb-setup-shell.sh}"
+
+usage() {
+  cat <<EOF
+Usage: bash $usage_script
+
+Pins a shell auto-env block into ~/.bashrc so the project brain runtime is
+loaded automatically when you enter this repo.
 EOF
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      exit 1
-      ;;
-  esac
-done
-
-if [[ -z "$repo_root" ]]; then
-  repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
-
-shell_escape() {
-  printf '%q' "$1"
 }
 
-bashrc="$HOME/.bashrc"
-marker_start="# Cross-Project Brain auto-env"
-marker_end="# End Cross-Project Brain auto-env"
-temp_file="$(mktemp)"
-repo_root_escaped="$(shell_escape "$repo_root")"
-bin_dir_escaped="$(shell_escape "$repo_root/bin")"
-completion_script_escaped="$(shell_escape "$repo_root/scripts/cpb-completion.bash")"
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+repo_root_escaped="$(cpb_shell_escape "$repo_root")"
+bin_dir_escaped="$(cpb_shell_escape "$bin_dir")"
+autoenv_script_escaped="$(cpb_shell_escape "$autoenv_script")"
+completion_script_escaped="$(cpb_shell_escape "$completion_script")"
 
 block_contents="$(cat <<EOF
 $marker_start
-if [ -f ${repo_root_escaped}/scripts/project-brain-autoenv.bash ]; then
-  . ${repo_root_escaped}/scripts/project-brain-autoenv.bash
+if [ -f ${autoenv_script_escaped} ]; then
+  . ${autoenv_script_escaped}
 fi
 if [ -d ${bin_dir_escaped} ]; then
   case ":\$PATH:" in
@@ -56,22 +52,10 @@ $marker_end
 EOF
 )"
 
-if [[ -f "$bashrc" ]]; then
-  awk -v start="$marker_start" -v end="$marker_end" -v block="$block_contents" '
-    $0 == start { skipping=1; next }
-    $0 == end { skipping=0; next }
-    skipping == 1 { next }
-    { print }
-    END { print block }
-  ' "$bashrc" >"$temp_file"
-else
-  printf '%s\n' "$block_contents" >"$temp_file"
-fi
-
-mv "$temp_file" "$bashrc"
+cpb_upsert_file_block "$bashrc" "$marker_start" "$marker_end" "$block_contents"
 
 cat <<EOF
-CPB shell auto-env pinned.
+$label shell auto-env pinned.
 
 Repo:    $repo_root
 Bash rc: $bashrc
