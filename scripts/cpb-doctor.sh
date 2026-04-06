@@ -47,18 +47,7 @@ if [[ -z "$repo_root" ]]; then
   repo_root="$(cpb_repo_root)"
 fi
 
-if [[ -z "${CPB_REPO_ROOT:-}" ]]; then
-  export CPB_REPO_ROOT="$repo_root"
-fi
-if [[ -z "${CPB_OPERATOR_ID:-}" ]]; then
-  export CPB_OPERATOR_ID="$(cpb_detect_operator_id "$repo_root" "${CPB_OPERATOR:-}")"
-fi
-if [[ -z "${CPB_OPERATOR:-}" ]]; then
-  export CPB_OPERATOR="$CPB_OPERATOR_ID"
-fi
-if [[ -z "${CPB_TRACKED_PROJECT_OPERATORS_ROOT:-}" ]]; then
-  export CPB_TRACKED_PROJECT_OPERATORS_ROOT="$(cpb_tracked_project_operators_root_default "$repo_root")"
-fi
+cpb_export_paths "$repo_root"
 
 is_tty=0
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -412,7 +401,7 @@ fi
 
 heading "Git hooks"
 if [[ -z "$configured_hooks_path" ]]; then
-  warn "hooks path" "git core.hooksPath is not set; run bash scripts/setup-neuronfs-git-hooks.sh"
+  warn "hooks path" "git core.hooksPath is not set; run bash scripts/cpb-setup-git-hooks.sh --repo-root . --hooks-dir .githooks --post-refresh-script scripts/cpb-refresh-after-git.sh --pre-push-script scripts/cpb-sync-personal-repo.sh"
 elif [[ "$configured_hooks_path" == "$expected_hooks_path" ]]; then
   ok "hooks path" "$configured_hooks_path"
 else

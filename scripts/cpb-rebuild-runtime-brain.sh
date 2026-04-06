@@ -5,6 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/cpb-paths.sh"
 
 repo_root="${CPB_REPO_ROOT:-$(cpb_repo_root)}"
+cpb_export_paths "$repo_root"
 global_brain_default="${CPB_GLOBAL_BRAIN:-}"
 team_brain_default="${CPB_TEAM_BRAIN:-}"
 project_brain_default="${CPB_PROJECT_BRAIN:-}"
