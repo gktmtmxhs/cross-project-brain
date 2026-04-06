@@ -33,14 +33,36 @@ The bootstrap script is intended to do these steps in order:
 
 1. copy public core scripts into the target repo
 2. add thin `AGENTS.md` and `CLAUDE.md` shims
-3. create baseline `brains/` directories
-4. create `.githooks/` and point git to them
-5. install NeuronFS under `.tools/neuronfs`
-6. patch the NeuronFS hook for CPB selective injection
-7. rebuild the first runtime brain
-8. wire shell auto-env into `~/.bashrc`
-9. start the local autogrowth worker when possible
-10. initialize the first finish-check baseline
+3. detect or ask for a basic project profile
+4. create baseline `brains/` directories
+5. write initial project profile scaffold files
+6. create `.githooks/` and point git to them
+7. install NeuronFS under `.tools/neuronfs`
+8. patch the NeuronFS hook for CPB selective injection
+9. rebuild the first runtime brain
+10. wire shell auto-env into `~/.bashrc`
+11. start the local autogrowth worker when possible
+12. initialize the first finish-check baseline
+
+The project profile step is intentionally lightweight. It does not try to fully model the product or replace human project curation. Instead, it gives CPB a first-pass scaffold based on common repo signals and any explicit installer inputs you provide.
+
+Auto-detection currently looks at signals such as:
+
+- `package.json`, `tsconfig.json`, `vite.config.*`, `next.config.*`
+- `pom.xml`, `build.gradle`, `build.gradle.kts`, `gradlew`
+- `go.mod`
+- `pyproject.toml`, `requirements.txt`
+- `Cargo.toml`
+- `Dockerfile`
+- `apps/` + `packages/` monorepo layout
+
+If the installer is running in an interactive TTY and you did not provide overrides, it can prompt for:
+
+- project type
+- short project summary
+- whether the repo should be treated as shared/team-oriented
+
+If the target repo is effectively empty, CPB scaffolds it as `greenfield` and writes TODO placeholders instead of pretending the repo already contains enough context.
 
 ## After The One-Line Install
 
@@ -154,8 +176,19 @@ Checked-in:
 AGENTS.md
 CLAUDE.md
 
+config/
+  cpdb/
+    cpb.env.example
+    project-profile.json
+    skill-role-map.example.json
+
+docs/
+  cpb/
+    PROJECT_PROFILE.md
+
 brains/
   team-brain/brain_v4/
+    prefrontal/01_project-profile.md
   project-operators/<github-username>/brain_v4/
   global-operators/<github-username>/brain_v4/
 
@@ -196,6 +229,16 @@ The bootstrap script should support these flags:
 
 - `--target <path>`
   - install into a different repo instead of the current working directory
+- `--personal-repo <path>`
+  - wire a personal private CPB repo during install
+- `--shared-repo`
+  - treat the repo as a shared/team repo during first-run scaffold and personal-brain setup
+- `--project-type <type>`
+  - force the first project profile type instead of using the detected guess
+- `--project-summary <text>`
+  - seed the first project summary instead of using a detected or TODO scaffold
+- `--non-interactive`
+  - skip installer prompts and keep the generated profile fully scripted
 - `--force`
   - overwrite starter files that already exist
 - `--no-shell`

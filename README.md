@@ -136,10 +136,27 @@ The installer is designed to set up, in one pass:
 - public helper scripts
 - `AGENTS.md` and `CLAUDE.md`
 - baseline `brains/` layout
+- initial project profile scaffold
 - `.githooks/`
 - shell auto-env
 - NeuronFS install and hook patch
 - first runtime brain rebuild
+
+During install, CPB now also writes a first-pass project profile scaffold:
+
+- `config/cpdb/project-profile.json`
+- `docs/cpb/PROJECT_PROFILE.md`
+- `brains/team-brain/brain_v4/prefrontal/01_project-profile.md`
+
+The installer does not try to fully understand your business domain, but it does make a useful first guess from common repo signals such as `package.json`, `vite.config.*`, `next.config.*`, Java build files, `go.mod`, `pyproject.toml`, `Cargo.toml`, `Dockerfile`, and monorepo layouts.
+
+If you run the installer in an interactive TTY:
+
+- it asks for project type when you did not pass `--project-type`
+- it asks for a short project summary when you did not pass `--project-summary`
+- it asks whether the repo should be treated as a shared/team repo when `--shared-repo` was not passed explicitly
+
+For empty repos, CPB scaffolds a `greenfield` profile with TODO placeholders instead of pretending it already knows the product direction.
 
 The installer now prefers a prebuilt `neuronfs` release asset for the current OS/arch. If a matching prebuilt asset is not available, it then tries to install `go` automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`) and builds the CLI locally. If both paths are unavailable, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
 
@@ -171,6 +188,17 @@ If you pass `--personal-repo`, the installer also assumes a recommended GitHub p
 - in non-interactive mode or without `gh` auth, prints guidance instead of creating anything
 
 If you pass `--personal-repo ... --shared-repo` in that one-line install, the private-repo wiring is done immediately.
+
+Useful install flags:
+
+- `--project-type <type>`
+  - force the initial project profile type such as `web-app`, `api-service`, `fullstack-app`, `cli`, `library`, or `greenfield`
+- `--project-summary <text>`
+  - seed the first project summary instead of using a detected or TODO scaffold
+- `--non-interactive`
+  - skip installer prompts and keep the generated profile fully scripted
+- `--shared-repo`
+  - mark the repo as shared/team-oriented during first-run profile scaffolding and personal-brain wiring
 
 ## How Sync Works
 

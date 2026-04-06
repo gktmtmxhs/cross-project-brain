@@ -137,10 +137,27 @@ bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/
 - 공개용 helper script 복사
 - `AGENTS.md`, `CLAUDE.md` 배치
 - `brains/` 기본 구조 생성
+- 초기 project profile scaffold 생성
 - `.githooks/` 설정
 - shell auto-env 연결
 - NeuronFS 설치와 hook patch
 - runtime brain 첫 rebuild
+
+설치 과정에서는 첫 project profile scaffold도 같이 만듭니다.
+
+- `config/cpdb/project-profile.json`
+- `docs/cpb/PROJECT_PROFILE.md`
+- `brains/team-brain/brain_v4/prefrontal/01_project-profile.md`
+
+이 단계는 프로젝트를 완전히 이해한다고 주장하는 것이 아니라, 저장소에 보이는 흔한 신호를 바탕으로 첫 문맥을 잡아주는 수준입니다. 현재는 `package.json`, `vite.config.*`, `next.config.*`, Java build 파일, `go.mod`, `pyproject.toml`, `Cargo.toml`, `Dockerfile`, monorepo 레이아웃 등을 바탕으로 type과 stack을 추정합니다.
+
+TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 아래를 물어봅니다.
+
+- project type
+- 짧은 project summary
+- shared/team repo 여부
+
+아직 거의 비어 있는 repo라면, 이미 알고 있는 척하지 않고 `greenfield` 타입과 TODO placeholder로 scaffold를 만듭니다.
 
 그리고 personal repo를 함께 지정했다면:
 
@@ -151,6 +168,17 @@ bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/
 - 비대화형 환경이거나 `gh` 인증이 없으면 생성은 하지 않고, 먼저 만들라고 안내만 합니다
 
 위 한 줄 설치에서 `--personal-repo ... --shared-repo`를 함께 주면, 개인 private repo 연동까지 한 번에 끝납니다.
+
+처음 설치에서 자주 쓰는 옵션:
+
+- `--project-type <type>`
+  - 첫 project profile type을 강제로 지정합니다
+- `--project-summary <text>`
+  - 자동 추정이나 TODO 대신 첫 summary를 직접 넣습니다
+- `--non-interactive`
+  - prompt 없이 스크립트형 설치로 고정합니다
+- `--shared-repo`
+  - 첫 scaffold와 personal-brain wiring을 shared/team repo 기준으로 잡습니다
 
 설치가 끝나면 먼저 아래 명령으로 상태를 확인하면 됩니다.
 
