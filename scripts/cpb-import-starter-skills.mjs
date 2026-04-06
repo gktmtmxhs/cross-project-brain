@@ -17,7 +17,7 @@ function usage() {
 
 Options:
   --repo-root <path>         target repo root (default: script parent repo)
-  --registry <path>          registry JSON (default: config/cpdb/starter-skill-registry.json)
+  --registry <path>          registry JSON (default: config/cpdb/starter-skill-registry.json, fallback: templates/config/starter-skill-registry.json)
   --preset <name>            import a named starter-skill preset
   --skill <name>             import a single named skill (repeatable)
   --list-presets             print available presets
@@ -88,6 +88,19 @@ function loadRegistry(registryPath) {
     fail("Starter skill registry must contain a presets object.");
   }
   return registry;
+}
+
+function resolveRegistryPath(repoRoot, explicitRegistryPath) {
+  if (explicitRegistryPath) {
+    return explicitRegistryPath;
+  }
+
+  const consumerRegistry = path.join(repoRoot, "config", "cpdb", "starter-skill-registry.json");
+  if (fs.existsSync(consumerRegistry)) {
+    return consumerRegistry;
+  }
+
+  return path.join(repoRoot, "templates", "config", "starter-skill-registry.json");
 }
 
 function collectSelection(args, registry) {
@@ -285,7 +298,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const repoRoot = args.repoRoot;
-const registryPath = args.registry || path.join(repoRoot, "config", "cpdb", "starter-skill-registry.json");
+const registryPath = resolveRegistryPath(repoRoot, args.registry);
 const registry = loadRegistry(registryPath);
 
 if (args.listPresets) {

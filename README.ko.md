@@ -156,10 +156,13 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
 - project type
 - 짧은 project summary
 - shared/team repo 여부
+- `web-app`, `fullstack-app`, `greenfield` repo라면 초기 design system scaffold 생성 여부
 
 아직 거의 비어 있는 repo라면, 이미 알고 있는 척하지 않고 `greenfield` 타입과 TODO placeholder로 scaffold를 만듭니다.
 
 설치 시에는 pinned upstream repo에서 curated starter skill 세트를 가져오도록 설정할 수도 있습니다. 이 경로는 기본으로 켜지지 않고, 플래그나 대화형 prompt로 opt-in 해야 합니다. 기본 registry는 허용한 permissive license와 고정 commit ref만 사용하도록 제한되어 있고, 가져온 skill은 `.codex/vendor-skills/`에 vendor되고 `.codex/skills/` wrapper, `config/cpdb/skills.lock.json`, `docs/cpb/THIRD_PARTY_NOTICES.md`까지 같이 생성합니다.
+
+원하면 초기 design system scaffold도 같이 만들 수 있습니다. 이 경로는 `config/cpdb/design-system.json`, `docs/design-system.md`, `docs/ui-specs/foundations.md`, `brains/team-brain/brain_v4/cortex/02_design-system.md` 를 생성합니다. 이것은 최종 브랜드를 확정하는 기능이 아니라, project profile을 바탕으로 첫 설계 방향을 잡아 주는 시작점입니다.
 
 그리고 personal repo를 함께 지정했다면:
 
@@ -183,6 +186,8 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
   - `minimal`, `web`, `backend`, `fullstack`, `growth` 같은 preset을 고릅니다
 - `--starter-skill-registry <path>`
   - 기본 pinned registry 대신 로컬 custom registry 파일을 씁니다
+- `--scaffold-design-system`
+  - 설치 중 초기 design system scaffold를 같이 생성합니다
 - `--non-interactive`
   - prompt 없이 스크립트형 설치로 고정합니다
 - `--shared-repo`
@@ -278,6 +283,53 @@ bash scripts/cpb-import-starter-skills.sh --preset web
 - allowlisted license
 - import할 source path
 - local skill 이름, alias, role
+
+framework core repo 자체에서도 `cpb import-starter-skills --list-presets` 를 바로 쓸 수 있도록, 설치 전에는 `templates/config/starter-skill-registry.json` 으로 fallback 하도록 되어 있습니다.
+
+## 초기 Design-System Scaffold
+
+초기 design system scaffold는 설치 중에도 만들 수 있고, 나중에 다시 생성할 수도 있습니다.
+
+설치 중에 같이 만들려면:
+
+```bash
+bash scripts/cpb-install.sh --scaffold-design-system
+```
+
+나중에 다시 만들거나 덮어쓰려면:
+
+```bash
+cpb scaffold-design-system
+cpb scaffold-design-system --style editorial --primary "#9A3412" --motion high --force
+```
+
+생성되는 산출물:
+
+```text
+config/
+  cpdb/
+    design-system.json
+
+docs/
+  design-system.md
+  ui-specs/
+    foundations.md
+
+brains/
+  team-brain/
+    brain_v4/
+      cortex/
+        02_design-system.md
+```
+
+이 scaffold는 아래 preset 중 하나를 기준으로 잡습니다.
+
+- `product-ui`
+- `console`
+- `editorial`
+- `concept-starter`
+
+`design-system.json` 은 에이전트와 후속 tooling이 읽는 machine-readable source이고, Markdown 문서는 사람이 검토하고 다듬는 용도입니다. team-brain seed는 에이전트가 매 작업마다 긴 문서를 다시 읽지 않아도 되도록 짧게 남겨 둔 포인터입니다.
 
 ## 설치 후 저장소 구조
 

@@ -4,4 +4,40 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
-exec bash "$repo_root/scripts/setup-cpb-profile.sh" "$@"
+command_name=""
+dispatch_args=()
+command_consumed=0
+
+for ((index = 1; index <= $#; index++)); do
+  value="${!index}"
+  case "$value" in
+    --repo-root)
+      dispatch_args+=("$value")
+      ((index++))
+      dispatch_args+=("${!index}")
+      ;;
+    -*)
+      dispatch_args+=("$value")
+      ;;
+    *)
+      if [[ "$command_consumed" -eq 0 ]]; then
+        command_name="$value"
+        command_consumed=1
+      else
+        dispatch_args+=("$value")
+      fi
+      ;;
+  esac
+done
+
+case "$command_name" in
+  import-starter-skills)
+    exec bash "$repo_root/scripts/cpb-import-starter-skills.sh" "${dispatch_args[@]}"
+    ;;
+  scaffold-design-system)
+    exec bash "$repo_root/scripts/cpb-scaffold-design-system.sh" "${dispatch_args[@]}"
+    ;;
+  *)
+    exec bash "$repo_root/scripts/setup-cpb-profile.sh" "$@"
+    ;;
+esac

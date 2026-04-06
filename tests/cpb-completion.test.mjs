@@ -21,10 +21,14 @@ test("cpb completion registers a completion spec", () => {
 });
 
 test("cpb completion suggests top-level and apply profile commands", () => {
-  const topLevel = runBash(`source "${completionPath}" && COMP_WORDS=(cpb st) && COMP_CWORD=1 && COMPREPLY=() && _cpb_complete && printf '%s\\n' "\${COMPREPLY[@]}"`);
+  const topLevel = runBash(`source "${completionPath}" && COMP_WORDS=(cpb s) && COMP_CWORD=1 && COMPREPLY=() && _cpb_complete && printf '%s\\n' "\${COMPREPLY[@]}"`);
   assert.match(topLevel, /\bstatus\b/u);
+  assert.match(topLevel, /\bscaffold-design-system\b/u);
 
   const applyProfiles = runBash(`source "${completionPath}" && COMP_WORDS=(cpb apply te) && COMP_CWORD=2 && COMPREPLY=() && _cpb_complete && printf '%s\\n' "\${COMPREPLY[@]}"`);
   assert.match(applyProfiles, /\bteam-local\b/u);
   assert.match(applyProfiles, /\bteam-personal\b/u);
+
+  const designOptions = runBash(`source "${completionPath}" && COMP_WORDS=(cpb scaffold-design-system --st) && COMP_CWORD=2 && COMPREPLY=() && _cpb_complete && printf '%s\\n' "\${COMPREPLY[@]}"`);
+  assert.match(designOptions, /--style/u);
 });

@@ -17,6 +17,8 @@ starter_skill_import=0
 starter_skills_explicit=0
 starter_skill_preset=""
 starter_skill_registry=""
+design_system_scaffold=0
+design_system_explicit=0
 temp_framework_root=""
 detected_project_type=""
 detected_project_stack=""
@@ -28,12 +30,13 @@ initial_repo_empty=0
 
 usage() {
   cat <<EOF
-Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--project-type <type>] [--project-summary <text>] [--with-starter-skills] [--starter-skill-preset <name>] [--starter-skill-registry <path>] [--non-interactive] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth] [--skip-go-install]
+Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--project-type <type>] [--project-summary <text>] [--with-starter-skills] [--starter-skill-preset <name>] [--starter-skill-registry <path>] [--scaffold-design-system] [--non-interactive] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth] [--skip-go-install]
 
 Examples:
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/.cpb-personal" --shared-repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo --project-type fullstack-app --project-summary "Subscription SaaS for guitar learners"
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo --with-starter-skills --starter-skill-preset web
+  bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo --with-starter-skills --starter-skill-preset web --scaffold-design-system
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo ~/workspace/cpb-personal --shared-repo
   tmpdir="\$(mktemp -d)" && git clone --depth 1 https://github.com/<owner>/cross-project-brain.git "\$tmpdir" && bash "\$tmpdir/scripts/cpb-install.sh" --personal-repo "$HOME/.cpb-personal" --shared-repo && rm -rf "\$tmpdir"
@@ -84,6 +87,11 @@ while [[ $# -gt 0 ]]; do
     --starter-skill-registry)
       starter_skill_registry="$2"
       shift 2
+      ;;
+    --scaffold-design-system)
+      design_system_scaffold=1
+      design_system_explicit=1
+      shift
       ;;
     --force)
       force=1
@@ -550,6 +558,16 @@ if can_prompt_tty; then
       starter_skill_import=1
     fi
   fi
+
+  if [[ "$design_system_explicit" -eq 0 ]]; then
+    case "$project_profile_type" in
+      web-app|fullstack-app|greenfield)
+        if prompt_yes_no "Scaffold an initial design system now?" "y"; then
+          design_system_scaffold=1
+        fi
+        ;;
+    esac
+  fi
 fi
 
 if [[ -z "$project_profile_summary" && "$initial_repo_empty" -eq 1 ]]; then
@@ -747,6 +765,15 @@ if [[ "$starter_skill_import" -eq 1 ]]; then
     --preset "$starter_skill_preset"
 fi
 
+if [[ "$design_system_scaffold" -eq 1 ]]; then
+  if ! command -v node >/dev/null 2>&1; then
+    echo "node is required to scaffold the initial design system." >&2
+    exit 1
+  fi
+
+  bash "$target_repo/scripts/cpb-scaffold-design-system.sh" --repo-root "$target_repo"
+fi
+
 if command -v node >/dev/null 2>&1; then
   CPB_REPO_ROOT="$target_repo" \
   CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
@@ -772,6 +799,14 @@ Installed:
   - .githooks/*
 EOF
 
+if [[ "$design_system_scaffold" -eq 1 ]]; then
+  cat <<EOF
+  - config/cpdb/design-system.json
+  - docs/design-system.md
+  - docs/ui-specs/foundations.md
+EOF
+fi
+
 if [[ -n "$personal_repo" ]]; then
   cat <<EOF
 
@@ -789,14 +824,15 @@ Next steps:
   1. Open a new shell or run: source ~/.bashrc
   2. Run: cpb status
   3. Review docs/cpb/PROJECT_PROFILE.md and correct any guessed project context
-  4. If you imported starter skills, review docs/cpb/THIRD_PARTY_NOTICES.md and .codex/skills/
-  5. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
-  6. Start working normally
+  4. If scaffolded, review docs/design-system.md and docs/ui-specs/foundations.md
+  5. If you imported starter skills, review docs/cpb/THIRD_PARTY_NOTICES.md and .codex/skills/
+  6. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
+  7. Start working normally
 EOF
 
 if [[ -n "$personal_repo" ]]; then
   cat <<EOF
-  7. Use normal git pull / git push in this project repo
+  8. Use normal git pull / git push in this project repo
      - pull will try to refresh your personal repo first
      - push will try to sync your personal repo before the project push
 EOF

@@ -37,13 +37,14 @@ The bootstrap script is intended to do these steps in order:
 4. create baseline `brains/` directories
 5. write initial project profile scaffold files
 6. optionally import curated starter skills from pinned upstream repos
-7. create `.githooks/` and point git to them
-8. install NeuronFS under `.tools/neuronfs`
-9. patch the NeuronFS hook for CPB selective injection
-10. rebuild the first runtime brain
-11. wire shell auto-env into `~/.bashrc`
-12. start the local autogrowth worker when possible
-13. initialize the first finish-check baseline
+7. optionally scaffold an initial design system
+8. create `.githooks/` and point git to them
+9. install NeuronFS under `.tools/neuronfs`
+10. patch the NeuronFS hook for CPB selective injection
+11. rebuild the first runtime brain
+12. wire shell auto-env into `~/.bashrc`
+13. start the local autogrowth worker when possible
+14. initialize the first finish-check baseline
 
 The project profile step is intentionally lightweight. It does not try to fully model the product or replace human project curation. Instead, it gives CPB a first-pass scaffold based on common repo signals and any explicit installer inputs you provide.
 
@@ -62,10 +63,13 @@ If the installer is running in an interactive TTY and you did not provide overri
 - project type
 - short project summary
 - whether the repo should be treated as shared/team-oriented
+- whether CPB should scaffold an initial design system for `web-app`, `fullstack-app`, or `greenfield` repos
 
 If the target repo is effectively empty, CPB scaffolds it as `greenfield` and writes TODO placeholders instead of pretending the repo already contains enough context.
 
 Starter-skill import is separate from project profile scaffolding. When enabled, the installer uses a pinned local registry to clone allowlisted upstream skill repos, vendor the selected files into the consumer repo, create managed wrappers under `.codex/skills/`, write a generated `skill-role-map.json`, record the exact import in `skills.lock.json`, and regenerate `docs/cpb/THIRD_PARTY_NOTICES.md`.
+
+Initial design-system scaffolding is also intentionally lightweight. It uses the detected project profile plus a small preset catalog to generate a machine-readable `config/cpdb/design-system.json`, two Markdown review docs, and a short team-brain seed. It is meant to give agents and humans a shared starting point, not to lock the product into a final brand direction.
 
 ## After The One-Line Install
 
@@ -187,6 +191,51 @@ docs/
     THIRD_PARTY_NOTICES.md
 ```
 
+The same command also works inside the public framework repo itself because the CLI falls back to `templates/config/starter-skill-registry.json` when the consumer-specific registry has not been copied into `config/cpdb/` yet.
+
+## Initial Design-System Scaffold
+
+You can opt into an initial design-system scaffold during install:
+
+```bash
+bash scripts/cpb-install.sh --scaffold-design-system
+```
+
+Or generate it later:
+
+```bash
+cpb scaffold-design-system
+cpb scaffold-design-system --style product-ui --primary "#0F766E" --force
+```
+
+Generated artifacts:
+
+```text
+config/
+  cpdb/
+    design-system.json
+
+docs/
+  design-system.md
+  ui-specs/
+    foundations.md
+
+brains/
+  team-brain/
+    brain_v4/
+      cortex/
+        02_design-system.md
+```
+
+This scaffold derives from the project profile and a preset catalog:
+
+- `product-ui`
+- `console`
+- `editorial`
+- `concept-starter`
+
+Use the generated JSON as the machine-readable source for tools and future codegen. Use the Markdown files for review, edits, and product/design discussion.
+
 ## Recommended Real-World Layout
 
 For real usage, especially when you move between machines or work in team repos, the safest layout is:
@@ -295,6 +344,8 @@ The bootstrap script should support these flags:
   - choose the starter-skill preset to import
 - `--starter-skill-registry <path>`
   - replace the default pinned starter-skill registry with a local registry file
+- `--scaffold-design-system`
+  - generate a first-pass design-system scaffold during install
 - `--non-interactive`
   - skip installer prompts and keep the generated profile fully scripted
 - `--force`

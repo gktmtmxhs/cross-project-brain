@@ -155,12 +155,15 @@ If you run the installer in an interactive TTY:
 - it asks for project type when you did not pass `--project-type`
 - it asks for a short project summary when you did not pass `--project-summary`
 - it asks whether the repo should be treated as a shared/team repo when `--shared-repo` was not passed explicitly
+- for `web-app`, `fullstack-app`, and `greenfield` repos, it can also ask whether to scaffold an initial design system
 
 For empty repos, CPB scaffolds a `greenfield` profile with TODO placeholders instead of pretending it already knows the product direction.
 
 The installer now prefers a prebuilt `neuronfs` release asset for the current OS/arch. If a matching prebuilt asset is not available, it then tries to install `go` automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`) and builds the CLI locally. If both paths are unavailable, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
 
 The installer can also import a curated starter-skill set from pinned upstream repositories. This is opt-in by flag and prompt, and the default registry is intentionally limited to allowlisted permissive licenses plus fixed commit refs. Imported starter skills are vendored under `.codex/vendor-skills/`, wrapped under `.codex/skills/`, recorded in `config/cpdb/skills.lock.json`, and disclosed in `docs/cpb/THIRD_PARTY_NOTICES.md`.
+
+If you opt in, the installer can also scaffold a first-pass design system from the project profile. That path writes `config/cpdb/design-system.json`, `docs/design-system.md`, `docs/ui-specs/foundations.md`, and `brains/team-brain/brain_v4/cortex/02_design-system.md`. This is deliberately a starting point, not a claim that CPB already understands the final brand.
 
 When a prebuilt asset is used, the installer also downloads the matching `.sha256` file and verifies the archive before extracting it. If the checksum file is missing or invalid, CPB falls back to the local Go build path instead of trusting the archive blindly.
 
@@ -203,6 +206,8 @@ Useful install flags:
   - choose the preset to import such as `minimal`, `web`, `backend`, `fullstack`, or `growth`
 - `--starter-skill-registry <path>`
   - replace the default pinned starter-skill registry with a custom local registry file
+- `--scaffold-design-system`
+  - generate an initial design-system scaffold during install
 - `--non-interactive`
   - skip installer prompts and keep the generated profile fully scripted
 - `--shared-repo`
@@ -322,6 +327,46 @@ The default registry lives at `config/cpdb/starter-skill-registry.json` after in
 - allowlisted license
 - imported source paths
 - local skill names, aliases, and roles
+
+In the framework core repo itself, `cpb import-starter-skills --list-presets` falls back to `templates/config/starter-skill-registry.json` so the public CLI can inspect the bundled registry before installation.
+
+## Initial Design-System Scaffold
+
+CPB can also scaffold a first-pass design system from the repo's project profile.
+
+Run it during install:
+
+```bash
+bash scripts/cpb-install.sh --scaffold-design-system
+```
+
+Or run it later through the public CLI:
+
+```bash
+cpb scaffold-design-system
+cpb scaffold-design-system --style editorial --primary "#9A3412" --motion high --force
+```
+
+Generated artifacts:
+
+```text
+config/
+  cpdb/
+    design-system.json
+
+docs/
+  design-system.md
+  ui-specs/
+    foundations.md
+
+brains/
+  team-brain/
+    brain_v4/
+      cortex/
+        02_design-system.md
+```
+
+The generated JSON is the machine-readable source for agents and future tooling. The Markdown docs are for review and curation. The team-brain seed is intentionally short so agents can see the current design direction without rereading the full docs every task.
 
 ## What Gets Created After Install
 
