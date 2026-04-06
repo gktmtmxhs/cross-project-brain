@@ -36,13 +36,14 @@ The bootstrap script is intended to do these steps in order:
 3. detect or ask for a basic project profile
 4. create baseline `brains/` directories
 5. write initial project profile scaffold files
-6. create `.githooks/` and point git to them
-7. install NeuronFS under `.tools/neuronfs`
-8. patch the NeuronFS hook for CPB selective injection
-9. rebuild the first runtime brain
-10. wire shell auto-env into `~/.bashrc`
-11. start the local autogrowth worker when possible
-12. initialize the first finish-check baseline
+6. optionally import curated starter skills from pinned upstream repos
+7. create `.githooks/` and point git to them
+8. install NeuronFS under `.tools/neuronfs`
+9. patch the NeuronFS hook for CPB selective injection
+10. rebuild the first runtime brain
+11. wire shell auto-env into `~/.bashrc`
+12. start the local autogrowth worker when possible
+13. initialize the first finish-check baseline
 
 The project profile step is intentionally lightweight. It does not try to fully model the product or replace human project curation. Instead, it gives CPB a first-pass scaffold based on common repo signals and any explicit installer inputs you provide.
 
@@ -63,6 +64,8 @@ If the installer is running in an interactive TTY and you did not provide overri
 - whether the repo should be treated as shared/team-oriented
 
 If the target repo is effectively empty, CPB scaffolds it as `greenfield` and writes TODO placeholders instead of pretending the repo already contains enough context.
+
+Starter-skill import is separate from project profile scaffolding. When enabled, the installer uses a pinned local registry to clone allowlisted upstream skill repos, vendor the selected files into the consumer repo, create managed wrappers under `.codex/skills/`, write a generated `skill-role-map.json`, record the exact import in `skills.lock.json`, and regenerate `docs/cpb/THIRD_PARTY_NOTICES.md`.
 
 ## After The One-Line Install
 
@@ -143,6 +146,47 @@ cpb apply solo-personal
 
 Fallback commands such as `bash scripts/setup-cpb-profile.sh status` still work. Consumer repos can still add a thinner alias if they want shorter product-specific commands, but the public-core wrapper is enough for first-run setup and state checks on its own.
 
+## Starter Skill Import
+
+The public core keeps starter-skill import opt-in on purpose.
+
+Recommended manual import after install:
+
+```bash
+bash scripts/cpb-import-starter-skills.sh --preset web
+```
+
+The default registry is copied to:
+
+```text
+config/cpdb/starter-skill-registry.json
+```
+
+That registry records:
+
+- upstream repo URL
+- pinned ref
+- allowlisted license
+- imported source paths
+- local skill names, aliases, and roles
+
+Generated artifacts after import:
+
+```text
+.codex/
+  skills/
+  vendor-skills/
+
+config/
+  cpdb/
+    skill-role-map.json
+    skills.lock.json
+
+docs/
+  cpb/
+    THIRD_PARTY_NOTICES.md
+```
+
 ## Recommended Real-World Layout
 
 For real usage, especially when you move between machines or work in team repos, the safest layout is:
@@ -180,11 +224,19 @@ config/
   cpdb/
     cpb.env.example
     project-profile.json
+    starter-skill-registry.json
     skill-role-map.example.json
+    skill-role-map.json
+    skills.lock.json
 
 docs/
   cpb/
     PROJECT_PROFILE.md
+    THIRD_PARTY_NOTICES.md
+
+.codex/
+  skills/
+  vendor-skills/
 
 brains/
   team-brain/brain_v4/
@@ -237,6 +289,12 @@ The bootstrap script should support these flags:
   - force the first project profile type instead of using the detected guess
 - `--project-summary <text>`
   - seed the first project summary instead of using a detected or TODO scaffold
+- `--with-starter-skills`
+  - import a curated starter-skill preset during install
+- `--starter-skill-preset <name>`
+  - choose the starter-skill preset to import
+- `--starter-skill-registry <path>`
+  - replace the default pinned starter-skill registry with a local registry file
 - `--non-interactive`
   - skip installer prompts and keep the generated profile fully scripted
 - `--force`

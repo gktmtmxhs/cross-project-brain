@@ -160,6 +160,8 @@ For empty repos, CPB scaffolds a `greenfield` profile with TODO placeholders ins
 
 The installer now prefers a prebuilt `neuronfs` release asset for the current OS/arch. If a matching prebuilt asset is not available, it then tries to install `go` automatically through a supported package manager (`apt-get`, `brew`, `dnf`, `yum`, `pacman`, `apk`, or `zypper`) and builds the CLI locally. If both paths are unavailable, the installer still completes in degraded hook-only mode. That keeps context injection, sync, and runtime rebuilds working, but full CPB autogrowth still requires the standalone `neuronfs` CLI binary.
 
+The installer can also import a curated starter-skill set from pinned upstream repositories. This is opt-in by flag and prompt, and the default registry is intentionally limited to allowlisted permissive licenses plus fixed commit refs. Imported starter skills are vendored under `.codex/vendor-skills/`, wrapped under `.codex/skills/`, recorded in `config/cpdb/skills.lock.json`, and disclosed in `docs/cpb/THIRD_PARTY_NOTICES.md`.
+
 When a prebuilt asset is used, the installer also downloads the matching `.sha256` file and verifies the archive before extracting it. If the checksum file is missing or invalid, CPB falls back to the local Go build path instead of trusting the archive blindly.
 
 Prebuilt release assets use this naming scheme:
@@ -195,6 +197,12 @@ Useful install flags:
   - force the initial project profile type such as `web-app`, `api-service`, `fullstack-app`, `cli`, `library`, or `greenfield`
 - `--project-summary <text>`
   - seed the first project summary instead of using a detected or TODO scaffold
+- `--with-starter-skills`
+  - import a curated starter-skill preset during install
+- `--starter-skill-preset <name>`
+  - choose the preset to import such as `minimal`, `web`, `backend`, `fullstack`, or `growth`
+- `--starter-skill-registry <path>`
+  - replace the default pinned starter-skill registry with a custom local registry file
 - `--non-interactive`
   - skip installer prompts and keep the generated profile fully scripted
 - `--shared-repo`
@@ -288,6 +296,33 @@ bash scripts/setup-cpb-profile.sh status
 
 Consumer repos can still add a thin alias on top if they want shorter product-specific commands, but the public CPB core now exposes `cpb ...` directly once shell setup is installed.
 
+## Starter Skills
+
+CPB does not ship third-party starter skill bodies by default, but it can vendor a curated starter set when you ask for it.
+
+Manual import after install:
+
+```bash
+bash scripts/cpb-import-starter-skills.sh --preset web
+```
+
+What this does:
+
+- clones pinned upstream skill repos from the local starter registry
+- vendors imported files under `.codex/vendor-skills/`
+- creates managed local wrappers under `.codex/skills/`
+- writes `config/cpdb/skill-role-map.json`
+- writes `config/cpdb/skills.lock.json`
+- regenerates `docs/cpb/THIRD_PARTY_NOTICES.md`
+
+The default registry lives at `config/cpdb/starter-skill-registry.json` after install. That registry records:
+
+- upstream repo URL
+- pinned ref
+- allowlisted license
+- imported source paths
+- local skill names, aliases, and roles
+
 ## What Gets Created After Install
 
 After installation, a consumer repo usually gets this structure.
@@ -297,6 +332,24 @@ After installation, a consumer repo usually gets this structure.
 ```text
 AGENTS.md
 CLAUDE.md
+
+config/
+  cpdb/
+    cpb.env.example
+    project-profile.json
+    starter-skill-registry.json
+    skill-role-map.example.json
+    skill-role-map.json
+    skills.lock.json
+
+docs/
+  cpb/
+    PROJECT_PROFILE.md
+    THIRD_PARTY_NOTICES.md
+
+.codex/
+  skills/
+  vendor-skills/
 
 brains/
   team-brain/brain_v4/

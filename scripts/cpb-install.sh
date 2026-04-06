@@ -13,6 +13,10 @@ shared_repo_explicit=0
 project_type=""
 project_summary=""
 non_interactive=0
+starter_skill_import=0
+starter_skills_explicit=0
+starter_skill_preset=""
+starter_skill_registry=""
 temp_framework_root=""
 detected_project_type=""
 detected_project_stack=""
@@ -24,11 +28,12 @@ initial_repo_empty=0
 
 usage() {
   cat <<EOF
-Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--project-type <type>] [--project-summary <text>] [--non-interactive] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth] [--skip-go-install]
+Usage: bash scripts/cpb-install.sh [--target <path>] [--personal-repo <path>] [--shared-repo] [--project-type <type>] [--project-summary <text>] [--with-starter-skills] [--starter-skill-preset <name>] [--starter-skill-registry <path>] [--non-interactive] [--force] [--no-shell] [--no-neuronfs] [--no-autogrowth] [--skip-go-install]
 
 Examples:
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/.cpb-personal" --shared-repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo --project-type fullstack-app --project-summary "Subscription SaaS for guitar learners"
+  bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo --with-starter-skills --starter-skill-preset web
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo ~/workspace/cpb-personal --shared-repo
   tmpdir="\$(mktemp -d)" && git clone --depth 1 https://github.com/<owner>/cross-project-brain.git "\$tmpdir" && bash "\$tmpdir/scripts/cpb-install.sh" --personal-repo "$HOME/.cpb-personal" --shared-repo && rm -rf "\$tmpdir"
@@ -64,6 +69,21 @@ while [[ $# -gt 0 ]]; do
     --non-interactive)
       non_interactive=1
       shift
+      ;;
+    --with-starter-skills)
+      starter_skill_import=1
+      starter_skills_explicit=1
+      shift
+      ;;
+    --starter-skill-preset)
+      starter_skill_import=1
+      starter_skills_explicit=1
+      starter_skill_preset="$2"
+      shift 2
+      ;;
+    --starter-skill-registry)
+      starter_skill_registry="$2"
+      shift 2
       ;;
     --force)
       force=1
@@ -217,6 +237,23 @@ sanitize_project_type() {
     raw="unknown"
   fi
   printf '%s\n' "$raw"
+}
+
+default_starter_skill_preset() {
+  case "${1:-unknown}" in
+    web-app)
+      printf 'web\n'
+      ;;
+    fullstack-app)
+      printf 'fullstack\n'
+      ;;
+    api-service)
+      printf 'backend\n'
+      ;;
+    *)
+      printf 'minimal\n'
+      ;;
+  esac
 }
 
 json_escape() {
@@ -506,10 +543,21 @@ if can_prompt_tty; then
       shared_repo=1
     fi
   fi
+
+  if [[ "$starter_skills_explicit" -eq 0 ]]; then
+    suggested_starter_preset="$(default_starter_skill_preset "$project_profile_type")"
+    if prompt_yes_no "Import curated starter skills (${suggested_starter_preset} preset)?" "n"; then
+      starter_skill_import=1
+    fi
+  fi
 fi
 
 if [[ -z "$project_profile_summary" && "$initial_repo_empty" -eq 1 ]]; then
   project_profile_summary="TODO: define the initial product, users, and technical direction for this new repo."
+fi
+
+if [[ -z "$starter_skill_preset" ]]; then
+  starter_skill_preset="$(default_starter_skill_preset "$project_profile_type")"
 fi
 
 write_hook() {
@@ -573,6 +621,13 @@ fi
 copy_file \
   "$framework_root/templates/config/skill-role-map.example.json" \
   "$target_repo/config/cpdb/skill-role-map.example.json"
+
+if [[ -n "$starter_skill_registry" ]]; then
+  starter_skill_registry="$(expand_path "$starter_skill_registry")"
+  copy_file "$starter_skill_registry" "$target_repo/config/cpdb/starter-skill-registry.json"
+else
+  copy_file "$framework_root/templates/config/starter-skill-registry.json" "$target_repo/config/cpdb/starter-skill-registry.json"
+fi
 
 ensure_brain_layout "$target_repo/brains/team-brain/brain_v4"
 write_project_profile_scaffold "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -681,6 +736,17 @@ if [[ "$start_autogrowth" -eq 1 && -x "$target_repo/.tools/neuronfs/neuronfs" ]]
   bash "$target_repo/scripts/cpb-autogrowth.sh" start || true
 fi
 
+if [[ "$starter_skill_import" -eq 1 ]]; then
+  if ! command -v node >/dev/null 2>&1; then
+    echo "node is required to import starter skills during install." >&2
+    exit 1
+  fi
+
+  bash "$target_repo/scripts/cpb-import-starter-skills.sh" \
+    --repo-root "$target_repo" \
+    --preset "$starter_skill_preset"
+fi
+
 if command -v node >/dev/null 2>&1; then
   CPB_REPO_ROOT="$target_repo" \
   CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
@@ -700,6 +766,7 @@ Installed:
   - CLAUDE.md
   - config/cpdb/cpb.env.example
   - config/cpdb/project-profile.json
+  - config/cpdb/starter-skill-registry.json
   - docs/cpb/PROJECT_PROFILE.md
   - brains/team-brain/brain_v4
   - .githooks/*
@@ -722,13 +789,14 @@ Next steps:
   1. Open a new shell or run: source ~/.bashrc
   2. Run: cpb status
   3. Review docs/cpb/PROJECT_PROFILE.md and correct any guessed project context
-  4. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
-  5. Start working normally
+  4. If you imported starter skills, review docs/cpb/THIRD_PARTY_NOTICES.md and .codex/skills/
+  5. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
+  6. Start working normally
 EOF
 
 if [[ -n "$personal_repo" ]]; then
   cat <<EOF
-  6. Use normal git pull / git push in this project repo
+  7. Use normal git pull / git push in this project repo
      - pull will try to refresh your personal repo first
      - push will try to sync your personal repo before the project push
 EOF
