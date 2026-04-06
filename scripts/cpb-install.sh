@@ -19,7 +19,7 @@ Examples:
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo "$HOME/.cpb-personal" --shared-repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --target /path/to/repo
   bash /path/to/cross-project-brain/scripts/cpb-install.sh --personal-repo ~/workspace/cpb-personal --shared-repo
-  tmpdir="$(mktemp -d)" && git clone --depth 1 https://github.com/<owner>/cross-project-brain.git "$tmpdir" && bash "$tmpdir/scripts/cpb-install.sh" --personal-repo "$HOME/.cpb-personal" --shared-repo && rm -rf "$tmpdir"
+  tmpdir="\$(mktemp -d)" && git clone --depth 1 https://github.com/<owner>/cross-project-brain.git "\$tmpdir" && bash "\$tmpdir/scripts/cpb-install.sh" --personal-repo "$HOME/.cpb-personal" --shared-repo && rm -rf "\$tmpdir"
 
 Advanced stdin/bootstrap mode:
   Set CPB_FRAMEWORK_REPO_URL when running this script without a checked-out framework repo beside it.
@@ -180,32 +180,8 @@ mkdir -p "$target_repo/bin" "$target_repo/scripts" "$target_repo/.githooks" "$ta
 
 copy_file "$framework_root/bin/cpb" "$target_repo/bin/cpb"
 
-for script_name in \
-  setup-cpb-profile.sh \
-  cpb-install.sh \
-  cpb-install-go.sh \
-  cpb-install-neuronfs.sh \
-  cpb-build-neuronfs-prebuilt.sh \
-  cpb-neuronfs-prebuilt.sh \
-  cpb-completion.bash \
-  cpb-doctor.sh \
-  cpb-patch-neuronfs-hook.mjs \
-  cpb-selective-injection.cjs \
-  cpb-paths.mjs \
-  cpb-paths.sh \
-  cpb-role-taxonomy.mjs \
-  cpb-log-learning.mjs \
-  cpb-finish-check.mjs \
-  cpb-rebuild-runtime-brain.sh \
-  cpb-refresh-after-git.sh \
-  cpb-setup-shell.sh \
-  cpb-setup-git-hooks.sh \
-  cpb-setup-personal-repo.sh \
-  cpb-autogrowth.mjs \
-  cpb-autogrowth.sh \
-  cpb-sync-personal-repo.sh \
-  project-brain-autoenv.bash
-do
+for source_path in "$framework_root"/scripts/cpb-* "$framework_root/scripts/project-brain-autoenv.bash" "$framework_root/scripts/setup-cpb-profile.sh"; do
+  script_name="$(basename "$source_path")"
   copy_file "$framework_root/scripts/$script_name" "$target_repo/scripts/$script_name"
 done
 
@@ -234,7 +210,11 @@ write_hook "post-rewrite"
 write_hook "pre-push"
 
 if [[ -d "$target_repo/.git" ]]; then
-  bash "$target_repo/scripts/cpb-setup-git-hooks.sh" --repo-root "$target_repo"
+  bash "$target_repo/scripts/cpb-setup-git-hooks.sh" \
+    --repo-root "$target_repo" \
+    --hooks-dir "$target_repo/.githooks" \
+    --post-refresh-script "scripts/cpb-refresh-after-git.sh" \
+    --pre-push-script "scripts/cpb-sync-personal-repo.sh"
 fi
 
 if [[ -n "$personal_repo" ]]; then
