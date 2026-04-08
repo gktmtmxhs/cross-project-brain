@@ -49,7 +49,9 @@ function ensureLayout() {
   ensureDir(runtimeInboxDir);
   ensureDir(globalBrain);
   ensureDir(projectBrain);
-  ensureDir(deviceBrain);
+  // Device brain is created lazily when a device-scope lesson is first
+  // logged (see resolveTargetBrain).  Eagerly creating it leaves an empty
+  // scaffold that looks active but contains no lessons.
 }
 
 function sanitizeText(text) {
@@ -113,6 +115,7 @@ function resolveTargetBrain(scope) {
     return globalBrain;
   }
   if (normalizedScope === "device") {
+    ensureDir(deviceBrain);
     return deviceBrain;
   }
   return projectBrain;

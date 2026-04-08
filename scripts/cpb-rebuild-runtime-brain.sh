@@ -142,9 +142,17 @@ fi
 
 mkdir -p \
   "$runtime_brain/_agents/global_inbox" \
-  "$runtime_brain/_inbox" \
-  "$device_brain/_inbox" \
-  "$device_brain/_agents/global_inbox"
+  "$runtime_brain/_inbox"
+
+# Only create device-brain inbox when the device brain was explicitly
+# initialized (--init-device) or already exists.  Without this guard the
+# rebuild creates an empty device-brain scaffold on every run, which
+# misleads users and agents into thinking the brain is active.
+if [[ -d "$device_brain" ]]; then
+  mkdir -p \
+    "$device_brain/_inbox" \
+    "$device_brain/_agents/global_inbox"
+fi
 
 hook_path="$neuronfs_install_dir/runtime/v4-hook.cjs"
 binary_path="$neuronfs_install_dir/neuronfs"
