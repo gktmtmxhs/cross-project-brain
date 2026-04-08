@@ -38,14 +38,12 @@ This framework also helps when the same person works across multiple machines.
 - If both machines use the same GitHub username as `CPB_OPERATOR`, `project-operators/<github-username>` and `global-operators/<github-username>` can move through git.
 - In practice, the simplest stable value is usually your GitHub username.
 - A lesson learned on the laptop can be pushed, pulled on the desktop, and reused there.
-- Machine-specific quirks stay in `.agent/.../device-brain/brain_v4`, so they do not pollute shared or cross-project memory.
 - Git hooks rebuild the runtime brain after pull, so the updated memory is available right away.
 
 Typical personal usage:
 
 1. Use the same `CPB_OPERATOR` on desktop and laptop. In practice this is usually your GitHub username.
 2. Commit, push, and pull tracked brain changes the same way you move code.
-3. Keep machine-only issues in `device-brain`.
 
 ### 4. When a team shares one project
 
@@ -53,7 +51,6 @@ Team usage can work well, but only if shared and personal memory are kept separa
 
 - Keep only reviewed, stable rules in `team-brain`.
 - Let each contributor keep their own memory in `project-operators/<github-username>` and `global-operators/<github-username>`.
-- Keep machine-only quirks in `device-brain`.
 - Promote personal lessons into team rules only through review.
 
 ## Recommended Real-World Operating Model
@@ -68,7 +65,6 @@ The safest long-term setup usually splits CPB into three layers:
    - `global brain`
    - personal career docs
 3. local machine state
-   - `device brain`
    - `runtime brain`
    - optionally a local-only project brain
 
@@ -100,7 +96,7 @@ Typical settings:
 | --- | --- | --- | --- |
 | Current project repo | code, `AGENTS.md`, `CLAUDE.md`, `scripts/cpb-*`, `.githooks`, `team-brain`, shared published docs | normal project `commit/push/pull` | yes |
 | Your personal private GitHub repo | `global brain`, personal career docs, personal CPB assets, optionally a personal `project brain` overlay | private repo `commit/push/pull` | no, if kept private |
-| Local-only state | `device brain`, `runtime brain`, optionally a local-only `project brain` | no git sync | no |
+| Local-only state | `runtime brain`, optionally a local-only `project brain` | no git sync | no |
 
 In short:
 
@@ -461,7 +457,6 @@ These are machine-local or local tool-install outputs.
 
 ```text
 .agent/cross-project-brain/<project-id>/
-  device-brain/brain_v4/
   runtime-brain/brain_v4/
 
 .tools/neuronfs/
@@ -469,8 +464,6 @@ These are machine-local or local tool-install outputs.
 
 What they do:
 
-- `device-brain/brain_v4`
-  - lessons that only matter on this machine
 - `runtime-brain/brain_v4`
   - the merged live brain that agents actually read during work
 - `.tools/neuronfs`
@@ -548,8 +541,7 @@ The normal workflow is:
 4. The agent solves the task.
 5. If a reusable lesson appears, it gets logged into:
    - project brain
-   - global brain
-   - or device brain
+   - or global brain
 6. The runtime brain is rebuilt.
 7. The next task starts with the updated brain.
 

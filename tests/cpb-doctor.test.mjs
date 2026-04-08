@@ -65,7 +65,7 @@ test("cpb doctor reports a ready desktop and laptop sync setup", () => {
     recursive: true,
   });
   fs.mkdirSync(localProjectBrain, { recursive: true });
-  fs.mkdirSync(path.join(agentRoot, "device-brain", "brain_v4"), { recursive: true });
+
   fs.mkdirSync(path.join(agentRoot, "runtime-brain", "brain_v4"), { recursive: true });
   fs.mkdirSync(path.join(personalRoot, "docs", "career", "operators", "cpb-test"), { recursive: true });
 
@@ -160,7 +160,7 @@ test("cpb doctor treats hook-only NeuronFS installs as ready", () => {
   fs.mkdirSync(path.join(personalRoot, "brains", "project-operators", "cpb-test", projectId, "brain_v4"), {
     recursive: true,
   });
-  fs.mkdirSync(path.join(agentRoot, "device-brain", "brain_v4"), { recursive: true });
+
   fs.mkdirSync(path.join(agentRoot, "runtime-brain", "brain_v4"), { recursive: true });
   fs.mkdirSync(path.join(personalRoot, "docs", "career", "operators", "cpb-test"), { recursive: true });
 

@@ -68,7 +68,6 @@ cpdb_export_paths() {
   export CPB_GLOBAL_BRAIN="${CPB_GLOBAL_BRAIN:-$global_brain_default}"
   export CPB_TEAM_BRAIN="${CPB_TEAM_BRAIN:-$repo_root/brains/team-brain/brain_v4}"
   export CPB_PROJECT_BRAIN="${CPB_PROJECT_BRAIN:-$repo_root/brains/project-operators/$operator_id/brain_v4}"
-  export CPB_DEVICE_BRAIN="${CPB_DEVICE_BRAIN:-$agent_root/device-brain/brain_v4}"
   export CPB_RUNTIME_BRAIN="${CPB_RUNTIME_BRAIN:-$agent_root/runtime-brain/brain_v4}"
   export CPB_CAREER_DOCS_ROOT="${CPB_CAREER_DOCS_ROOT:-$career_docs_root_default}"
   export CPB_NEURONFS_INSTALL_DIR="${CPB_NEURONFS_INSTALL_DIR:-$repo_root/.tools/neuronfs}"

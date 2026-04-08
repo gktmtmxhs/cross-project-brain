@@ -733,7 +733,7 @@ fi
 CPB_REPO_ROOT="$target_repo" \
 CPB_NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
 NEURONFS_INSTALL_DIR="$target_repo/.tools/neuronfs" \
-bash "$target_repo/scripts/cpb-rebuild-runtime-brain.sh" --init-global --init-project --init-device
+bash "$target_repo/scripts/cpb-rebuild-runtime-brain.sh" --init-global --init-project
 
 if [[ "$setup_shell" -eq 1 ]]; then
   bash "$target_repo/scripts/cpb-setup-shell.sh" --repo-root "$target_repo"

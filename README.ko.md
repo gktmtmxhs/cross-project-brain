@@ -38,14 +38,12 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 - 같은 GitHub username을 `CPB_OPERATOR`로 쓰면 `project-operators/<github-username>`와 `global-operators/<github-username>`가 git으로 같이 이동합니다.
 - 기본값은 GitHub username으로 두는 것이 가장 단순합니다.
 - 랩탑에서 배운 교훈을 push하고 데스크탑에서 pull하면, 같은 사람이 쌓은 학습이 그대로 이어집니다.
-- 장비에만 필요한 quirk는 `.agent/.../device-brain/brain_v4`에 남아서 다른 장비를 오염시키지 않습니다.
 - git hook가 runtime brain을 다시 만들어 주기 때문에, pull 직후 새 기억을 바로 읽을 수 있습니다.
 
 개인 환경에서는 보통 이렇게 씁니다.
 
 1. 데스크탑과 랩탑 모두 같은 `CPB_OPERATOR`를 씁니다. 보통 GitHub username을 씁니다.
 2. tracked brain 변경을 일반 코드처럼 commit/push/pull 합니다.
-3. 장비별 문제는 `device-brain`에만 남깁니다.
 
 ### 4. 한 프로젝트를 여러 사람이 같이 운영할 때
 
@@ -53,7 +51,6 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 
 - `team-brain`에는 검증된 공통 규칙만 넣습니다.
 - 사람마다 다른 기억은 각자 `project-operators/<github-username>`와 `global-operators/<github-username>`에 남깁니다.
-- 장비별 문제는 `device-brain`으로 분리합니다.
 - 개인 lesson을 팀 공통 규칙으로 올릴 때는 리뷰 후 승격하는 방식이 안전합니다.
 
 ## 권장 실전 운영 모델
@@ -68,7 +65,6 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
    - `global brain`
    - 개인 career docs
 3. 현재 장비 로컬
-   - `device brain`
    - `runtime brain`
    - 필요하면 로컬 전용 `project brain`
 
@@ -101,7 +97,7 @@ Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이
 | --- | --- | --- | --- |
 | 현재 프로젝트 repo | 코드, `AGENTS.md`, `CLAUDE.md`, `scripts/cpb-*`, `.githooks`, `team-brain`, shared 승격 문서 | 현재 프로젝트 git remote로 `commit/push/pull` | 보임 |
 | 내 개인 private GitHub repo | `global brain`, 개인 career docs, 개인 CPB 자산, 필요하면 개인용 `project brain` overlay | 내 private GitHub repo로 `commit/push/pull` | 안 보이게 운영 가능 |
-| 현재 장비 로컬 | `device brain`, `runtime brain`, 필요하면 local-only `project brain` | git 없음 | 안 보임 |
+| 현재 장비 로컬 | `runtime brain`, 필요하면 local-only `project brain` | git 없음 | 안 보임 |
 
 쉽게 말하면:
 
@@ -424,7 +420,6 @@ scripts/
 
 ```text
 .agent/cross-project-brain/<project-id>/
-  device-brain/brain_v4/
   runtime-brain/brain_v4/
 
 .tools/neuronfs/
@@ -432,8 +427,6 @@ scripts/
 
 각 역할:
 
-- `device-brain/brain_v4`
-  - 현재 장비에서만 필요한 lesson
 - `runtime-brain/brain_v4`
   - 에이전트가 실제로 읽는 합본 brain
 - `.tools/neuronfs`
@@ -513,7 +506,7 @@ docs/career/shared/<language>/
 2. 에이전트가 `AGENTS.md`나 `CLAUDE.md`를 읽습니다.
 3. shell auto-env가 `runtime-brain/brain_v4`를 연결합니다.
 4. 에이전트가 작업을 해결합니다.
-5. 재사용할 lesson이 생기면 project/global/device brain 중 맞는 곳에 기록합니다.
+5. 재사용할 lesson이 생기면 project/global brain 중 맞는 곳에 기록합니다.
 6. runtime brain을 다시 만듭니다.
 7. 다음 작업은 갱신된 brain을 읽고 시작합니다.
 

@@ -6,7 +6,6 @@ Thin Codex shim for this project. Keep this file small.
 - The agent should run CPB scripts autonomously. Humans normally should not.
 - Project-only lessons go to `brains/project-operators/<github-username>/brain_v4`. `CPB_OPERATOR` is usually your GitHub username.
 - Cross-project lessons go to `$CPB_GLOBAL_BRAIN`. Use `--scope global`.
-- Machine-only quirks go to `Device Brain`. Use `--scope device`.
 - Keep the same `CPB_OPERATOR` on every machine if you want shared operator capability. In practice, use your GitHub username.
 - Log only durable problem-solving lessons.
 - Do not create hiring/career documents automatically. Generate them only when the user explicitly asks. By default, write drafts under `$CPB_CAREER_DOCS_ROOT/<role>/<language>/...`; if that env var is unset, fall back to `docs/career/operators/<github-username>/<role>/<language>/...`. Use `docs/career/shared/<language>/...` only for explicit shared/published versions.

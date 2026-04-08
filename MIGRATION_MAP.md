@@ -15,7 +15,6 @@ Examples:
 - `LEGACY_NEURONFS_TEAM_BRAIN` -> `CPB_TEAM_BRAIN`
 - `LEGACY_NEURONFS_PROJECT_BRAIN` -> `CPB_PROJECT_BRAIN`
 - `LEGACY_NEURONFS_USER_BRAIN` -> `CPB_PROJECT_BRAIN`
-- `LEGACY_NEURONFS_DEVICE_BRAIN` -> `CPB_DEVICE_BRAIN`
 - `LEGACY_NEURONFS_RUNTIME_BRAIN` -> `CPB_RUNTIME_BRAIN`
 - `LEGACY_NEURONFS_SHARED_LANGUAGE` -> `CPB_SHARED_LANGUAGE`
 - `LEGACY_NEURONFS_PERSONAL_LANGUAGE` -> `CPB_PERSONAL_LANGUAGE`
@@ -53,5 +52,4 @@ Keep local implementation links only in adapter docs, not in public framework do
 - `Cross-Project Brain` -> keep
 - `Team Brain` -> keep
 - `Project Operator Brain` -> keep
-- `Device Brain` -> keep
 - `Runtime Brain` -> keep

@@ -83,8 +83,6 @@ export function resolveCpbPaths(options = {}) {
     ? personalProjectBrainPath(personalRepo, projectId, operatorId)
     : trackedProjectBrainPath(trackedProjectOperatorsRoot, operatorId);
   const projectBrain = options.projectBrain || process.env.CPB_PROJECT_BRAIN || projectBrainDefault;
-  const deviceBrain =
-    options.deviceBrain || process.env.CPB_DEVICE_BRAIN || path.join(agentRoot, "device-brain", "brain_v4");
   const runtimeBrain =
     options.runtimeBrain || process.env.CPB_RUNTIME_BRAIN || path.join(agentRoot, "runtime-brain", "brain_v4");
   const careerDocsRoot =
@@ -107,7 +105,6 @@ export function resolveCpbPaths(options = {}) {
     teamBrain,
     projectBrain,
     userBrain: projectBrain,
-    deviceBrain,
     runtimeBrain,
     careerDocsRoot,
     neuronfsInstallDir,
@@ -126,7 +123,6 @@ export const globalBrain = resolvedPaths.globalBrain;
 export const teamBrain = resolvedPaths.teamBrain;
 export const projectBrain = resolvedPaths.projectBrain;
 export const userBrain = resolvedPaths.userBrain;
-export const deviceBrain = resolvedPaths.deviceBrain;
 export const runtimeBrain = resolvedPaths.runtimeBrain;
 export const careerDocsRoot = resolvedPaths.careerDocsRoot;
 export const neuronfsInstallDir = resolvedPaths.neuronfsInstallDir;

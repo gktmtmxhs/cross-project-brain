@@ -147,7 +147,6 @@ cpb_export_paths() {
   export CPB_TEAM_BRAIN="${CPB_TEAM_BRAIN:-$repo_root/brains/team-brain/brain_v4}"
   export CPB_PROJECT_BRAIN="${CPB_PROJECT_BRAIN:-$project_brain_default}"
   export CPB_USER_BRAIN="${CPB_USER_BRAIN:-$CPB_PROJECT_BRAIN}"
-  export CPB_DEVICE_BRAIN="${CPB_DEVICE_BRAIN:-$agent_root/device-brain/brain_v4}"
   export CPB_RUNTIME_BRAIN="${CPB_RUNTIME_BRAIN:-$agent_root/runtime-brain/brain_v4}"
   export CPB_CAREER_DOCS_ROOT="${CPB_CAREER_DOCS_ROOT:-$career_docs_root_default}"
   export CPB_AUTO_PULL_PERSONAL="${CPB_AUTO_PULL_PERSONAL:-1}"
