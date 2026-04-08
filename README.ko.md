@@ -193,6 +193,23 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
 - `--shared-repo`
   - 첫 scaffold와 personal-brain wiring을 shared/team repo 기준으로 잡습니다
 
+## Lesson은 어디에 저장되나
+
+모든 lesson은 **로컬 파일시스템**에 먼저 저장됩니다. 에이전트가 lesson을 기록할 때 네트워크 호출은 없습니다.
+
+기본 저장 위치는 `~/.cpb-personal/` (= `CPB_PERSONAL_REPO` 값)입니다. 이 폴더는 그냥 디스크 위의 일반 디렉토리이고, 동시에 GitHub private repo의 로컬 clone이기도 합니다. 에이전트는 git을 모르고, 그냥 파일을 씁니다.
+
+Git 동기화는 별도 레이어이고, 평소 프로젝트 git 워크플로우에 얹혀서 동작합니다:
+
+- 프로젝트 repo에서 `git push` → pre-push hook이 `~/.cpb-personal/`도 commit & push
+- 프로젝트 repo에서 `git pull` → post-merge hook이 `~/.cpb-personal/`을 pull하고 runtime brain rebuild
+
+저장이 로컬 우선이기 때문에:
+
+- **오프라인에서도 정상 동작합니다.** lesson은 디스크에 계속 쌓이고, git 동기화는 다음 push/pull 때 따라갑니다.
+- **쓰기 시점에 외부 의존성이 없습니다.** autogrowth 워커가 `.neuron` 파일을 직접 쓰며, API 호출은 없습니다.
+- **Git은 그냥 전송 수단입니다.** personal repo에 remote를 안 달아도 한 대의 장비에서는 전부 동작합니다.
+
 설치가 끝나면 먼저 아래 명령으로 상태를 확인하면 됩니다.
 
 ```bash

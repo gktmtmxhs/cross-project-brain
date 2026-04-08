@@ -213,6 +213,23 @@ Useful install flags:
 - `--shared-repo`
   - mark the repo as shared/team-oriented during first-run profile scaffolding and personal-brain wiring
 
+## How Storage Works
+
+All lessons are written to your **local filesystem** first. There is no network call when an agent records a lesson.
+
+The typical write target is `~/.cpb-personal/` (or wherever `CPB_PERSONAL_REPO` points). That directory is just a normal folder on your disk that also happens to be a local git clone of your private GitHub repo. The agent does not know or care about git — it only writes files.
+
+Git sync is a separate, optional layer that rides on your normal project workflow:
+
+- `git push` in the project repo → pre-push hook commits and pushes `~/.cpb-personal/` too
+- `git pull` in the project repo → post-merge hook pulls `~/.cpb-personal/` and rebuilds the runtime brain
+
+Because storage is local-first:
+
+- **Offline works fine.** Lessons keep accumulating on disk. Git sync catches up on the next push/pull.
+- **No external dependency at write time.** The autogrowth worker writes `.neuron` files directly, no API calls.
+- **Git is just the transport.** If you never set up a remote for your personal repo, everything still works on one machine.
+
 ## How Sync Works
 
 This is the core day-to-day behavior:
