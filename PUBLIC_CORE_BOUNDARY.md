@@ -7,7 +7,6 @@ This public core is meant to be installed into other repositories so they can ad
 - `Team Brain`
 - `Project Operator Brain`
 - `Cross-Project Brain`
-- `Device Brain`
 - `Runtime Brain`
 
 It should contain:

@@ -355,7 +355,6 @@ report_dir "team brain" "${CPB_TEAM_BRAIN:-}"
 report_dir "global brain" "${CPB_GLOBAL_BRAIN:-}"
 report_dir "project brain" "${CPB_PROJECT_BRAIN:-}"
 info "project brain mode" "$(cpb_project_brain_mode "${CPB_PROJECT_BRAIN:-}")"
-report_dir "device brain" "${CPB_DEVICE_BRAIN:-}"
 report_dir "runtime brain" "${CPB_RUNTIME_BRAIN:-}"
 report_dir "career docs root" "${CPB_CAREER_DOCS_ROOT:-}"
 

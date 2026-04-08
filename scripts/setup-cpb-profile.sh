@@ -171,7 +171,7 @@ project_brain_path="$(cpb_project_brain_for_mode "$project_brain_mode" "$tracked
 hooks_dir="${CPB_PROFILE_HOOKS_DIR:-$repo_root/.githooks}"
 post_refresh_script="${CPB_PROFILE_POST_REFRESH_SCRIPT:-scripts/cpb-refresh-after-git.sh}"
 pre_push_script="${CPB_PROFILE_PRE_PUSH_SCRIPT:-scripts/cpb-sync-personal-repo.sh}"
-rebuild_args_string="${CPB_PROFILE_REBUILD_ARGS:---init-global --init-project --init-device}"
+rebuild_args_string="${CPB_PROFILE_REBUILD_ARGS:---init-global --init-project}"
 read -r -a rebuild_args <<< "$rebuild_args_string"
 
 printf 'Applying CPB profile.\n'

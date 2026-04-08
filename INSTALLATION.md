@@ -123,7 +123,7 @@ It shows:
 - whether `gh auth` is ready
 - whether your personal private repo is configured and has an upstream
 - whether git hooks are pinned
-- where `team/global/project/device/runtime` brains currently live
+- where `team/global/project/runtime` brains currently live
 - whether NeuronFS is installed
 
 ## Profile-Based Setup Wrapper
@@ -248,7 +248,6 @@ For real usage, especially when you move between machines or work in team repos,
    - `brains/global-operators/<github-username>`
    - personal career docs
 3. local-only agent state
-   - `device-brain`
    - `runtime-brain`
    - optional local-only project brain for shared/team repos
 
@@ -316,7 +315,6 @@ Local-only:
 
 ```text
 .agent/cross-project-brain/<project-id>/
-  device-brain/brain_v4/
   runtime-brain/brain_v4/
   logs/
   state/
@@ -382,7 +380,6 @@ Use neutral names in the public version:
 - `CPB_GLOBAL_BRAIN`
 - `CPB_TEAM_BRAIN`
 - `CPB_PROJECT_BRAIN`
-- `CPB_DEVICE_BRAIN`
 - `CPB_RUNTIME_BRAIN`
 - `CPB_CAREER_DOCS_ROOT`
 - `CPB_SHARED_LANGUAGE`

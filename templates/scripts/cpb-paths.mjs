@@ -60,9 +60,6 @@ export const teamBrain =
 export const projectBrain =
   process.env.CPB_PROJECT_BRAIN ||
   path.join(repoRoot, "brains", "project-operators", operatorId, "brain_v4");
-export const deviceBrain =
-  process.env.CPB_DEVICE_BRAIN ||
-  path.join(agentRoot, "device-brain", "brain_v4");
 export const runtimeBrain =
   process.env.CPB_RUNTIME_BRAIN ||
   path.join(agentRoot, "runtime-brain", "brain_v4");

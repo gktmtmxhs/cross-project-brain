@@ -22,7 +22,7 @@ prebuilt_checksum_url="${NEURONFS_PREBUILT_CHECKSUM_URL:-}"
 usage_script="${CPB_INSTALL_USAGE_SCRIPT:-scripts/cpb-install-neuronfs.sh}"
 patch_script="${CPB_INSTALL_PATCH_SCRIPT:-$repo_root/scripts/cpb-patch-neuronfs-hook.mjs}"
 rebuild_script_hint="${CPB_INSTALL_REBUILD_SCRIPT_HINT:-scripts/cpb-rebuild-runtime-brain.sh}"
-rebuild_args_hint="${CPB_INSTALL_REBUILD_ARGS_HINT:---init-global --init-project --init-device}"
+rebuild_args_hint="${CPB_INSTALL_REBUILD_ARGS_HINT:---init-global --init-project}"
 runtime_brain_hint="${CPB_INSTALL_RUNTIME_BRAIN_HINT:-${CPB_RUNTIME_BRAIN:-$repo_root/.agent/cross-project-brain/$project_id/runtime-brain/brain_v4}}"
 
 usage() {

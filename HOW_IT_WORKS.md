@@ -13,7 +13,7 @@ This framework is not a new model and not a standalone memory engine. It is an i
 4. **finish guards**
    - prevent clean task completion when reusable lessons were skipped
 5. **runtime brain rebuilds**
-   - merge team, project, global, and device layers into live context
+   - merge team, project, and global layers into live context
 6. **selective injection**
    - prioritize the most relevant role-aware context instead of dumping large prompt blobs
 
@@ -29,8 +29,6 @@ This framework is not a new model and not a standalone memory engine. It is an i
   - lessons that belong to the current repo
 - `Cross-Project Brain`
   - lessons that should be reusable in other repos
-- `Device Brain`
-  - quirks that only matter on one machine
 - `Runtime Brain`
   - the merged live brain that agents actually read
 - `skill`
@@ -46,7 +44,7 @@ This framework is not a new model and not a standalone memory engine. It is an i
 - keep shared/open-source lessons in English by default
 - keep personal or hiring-oriented artifacts in the user's preferred language
 - review team rules before promoting them
-- allow project/global/device lessons to grow automatically
+- allow project/global lessons to grow automatically
 - generate career docs on demand, not after every task
 - prefer stable files over dated files for career outputs
 
@@ -59,6 +57,5 @@ brains/
   global-operators/<operator-id>/brain_v4
 
 .agent/cross-project-brain/<project-id>/
-  device-brain/brain_v4
   runtime-brain/brain_v4
 ```

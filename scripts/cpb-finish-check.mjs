@@ -6,7 +6,7 @@ import process from "node:process";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { agentRoot, deviceBrain, globalBrain, projectBrain, repoRoot, trackedProjectOperatorsRoot } from "./cpb-paths.mjs";
+import { agentRoot, globalBrain, projectBrain, repoRoot, trackedProjectOperatorsRoot } from "./cpb-paths.mjs";
 
 const stateDir = path.join(agentRoot, "state");
 const logsDir = path.join(agentRoot, "logs");
@@ -321,7 +321,6 @@ export function runCli(argv = process.argv.slice(2)) {
   const memoryFiles = [
     ...collectRecentMemoryFiles(globalBrain, "global", baseline.updatedAt),
     ...collectRecentMemoryFiles(projectBrain, "project", baseline.updatedAt),
-    ...collectRecentMemoryFiles(deviceBrain, "device", baseline.updatedAt),
   ];
   if (memoryFiles.length > 0) {
     writeBaseline("lesson-recorded", currentState);
@@ -368,7 +367,6 @@ export function runCli(argv = process.argv.slice(2)) {
   process.stderr.write(`  node ${logLearningUsageScript} --skill <skill-name> [--surface <surface>] [--env <env>] --topic <topic> --lesson <lesson_name> --summary "..." --problem "..." --root-cause "..." --fix "..." --evidence "..."\n`);
   process.stderr.write("  Or use --role <general|frontend|backend|design|security|testing|platform|content|growth|education>.\n");
   process.stderr.write("  Add --scope global if the lesson should help in other repos too.\n");
-  process.stderr.write("  Add --scope device if the lesson is only for this machine or local environment.\n");
   if (sharedCareerPaths.length > 0) {
     process.stderr.write("  Shared career doc changes were detected. Add --allow-shared-career-publish if the user explicitly requested publish.\n");
   }

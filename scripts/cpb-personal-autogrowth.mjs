@@ -6,7 +6,6 @@ import process from "node:process";
 import { spawnSync } from "node:child_process";
 import {
   agentRoot,
-  deviceBrain,
   globalBrain,
   neuronfsInstallDir,
   projectBrain,
@@ -49,7 +48,6 @@ function ensureLayout() {
   ensureDir(runtimeInboxDir);
   ensureDir(globalBrain);
   ensureDir(projectBrain);
-  ensureDir(deviceBrain);
 }
 
 function sanitizeText(text) {
@@ -102,7 +100,9 @@ function normalizeScope(scope) {
     return "global";
   }
   if (value === "device") {
-    return "device";
+    // Device brain has been removed.  Fall back to project scope.
+    log("device scope is deprecated, falling back to project scope");
+    return "project";
   }
   return "project";
 }
@@ -111,9 +111,6 @@ function resolveTargetBrain(scope) {
   const normalizedScope = normalizeScope(scope);
   if (normalizedScope === "global") {
     return globalBrain;
-  }
-  if (normalizedScope === "device") {
-    return deviceBrain;
   }
   return projectBrain;
 }
