@@ -61,6 +61,36 @@ After setup, the intended daily flow is still normal `git pull` / `git push` in 
 
 For flags, generated files, and full install behavior, see [INSTALLATION.md](./INSTALLATION.md).
 
+## How To Work With CPB
+
+The normal usage pattern is:
+
+1. install CPB in the current repo
+2. let the agent read `AGENTS.md` or `CLAUDE.md`
+3. give the agent a normal repo task prompt
+4. if the task reveals a durable lesson, the agent logs it to the right brain layer
+5. finish-check closes the task and the next task starts from the updated runtime brain
+
+In practice, humans usually keep using normal repo workflows and normal prompts. Agents handle the low-level CPB scripts when they are needed.
+
+Useful commands when you do want to inspect or trigger framework behavior directly:
+
+- `cpb status`
+- `cpb profiles`
+- `cpb apply team-local`
+- `cpb scaffold-design-system`
+- `cpb import-starter-skills --preset web`
+- `bash scripts/cpb-doctor.sh`
+
+## Example Prompts
+
+- `Summarize the current project structure and list the main subsystems.`
+- `Implement <feature> and log any durable lesson if we discover one.`
+- `Review this PR for regressions, risks, and missing tests. Findings first.`
+- `Set this shared repo up so the project brain stays local-only but the global brain syncs through my private repo.`
+- `Scaffold an initial design system for this repo and use DESIGN.md as the working contract.`
+- `Generate a Korean project overview doc from the stored lessons for hiring use.`
+
 ## Core Concepts
 
 - `team-brain`

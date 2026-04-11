@@ -61,6 +61,36 @@ cpb status
 
 설치 옵션과 세부 동작은 [INSTALLATION.md](./INSTALLATION.md)를 보면 됩니다.
 
+## CPB로 작업하는 방식
+
+보통은 아래 흐름으로 씁니다.
+
+1. 현재 repo에 CPB를 설치합니다.
+2. 에이전트가 `AGENTS.md` 또는 `CLAUDE.md`를 읽게 둡니다.
+3. 평소처럼 현재 repo 작업 프롬프트를 줍니다.
+4. 작업 중 durable lesson이 생기면 에이전트가 맞는 brain layer에 기록합니다.
+5. finish-check로 작업을 닫고, 다음 작업은 갱신된 runtime brain에서 시작합니다.
+
+즉 사람은 평소처럼 repo 작업을 지시하고, low-level CPB script는 필요할 때 에이전트가 처리하는 방식이 기본입니다.
+
+직접 상태를 보거나 동작을 호출하고 싶을 때 유용한 명령:
+
+- `cpb status`
+- `cpb profiles`
+- `cpb apply team-local`
+- `cpb scaffold-design-system`
+- `cpb import-starter-skills --preset web`
+- `bash scripts/cpb-doctor.sh`
+
+## 예시 프롬프트
+
+- `현재 프로젝트 구조를 요약하고 주요 서브시스템을 정리해줘.`
+- `이 repo에 <feature>를 구현하고, 작업 중 durable lesson이 나오면 같이 기록해줘.`
+- `이 PR을 리뷰해서 회귀, 리스크, 테스트 누락을 먼저 알려줘.`
+- `이 shared repo는 project brain은 local-only로 두고, global brain은 내 private repo로 sync되게 설정해줘.`
+- `이 repo의 초기 design system을 scaffold하고, DESIGN.md를 작업 계약으로 써줘.`
+- `저장된 lesson을 바탕으로 취업용 한국어 프로젝트 소개 문서를 만들어줘.`
+
 ## 설치 후 꼭 이해해야 할 핵심 개념
 
 - `team-brain`
