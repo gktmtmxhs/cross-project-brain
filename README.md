@@ -350,14 +350,15 @@ cpb scaffold-design-system --style editorial --primary "#9A3412" --motion high -
 Generated artifacts:
 
 ```text
+DESIGN.md
+
 config/
   cpdb/
     design-system.json
 
 docs/
-  design-system.md
-  ui-specs/
-    foundations.md
+  arch/
+    design-system.md
 
 brains/
   team-brain/
@@ -366,7 +367,7 @@ brains/
         02_design-system.md
 ```
 
-The generated JSON is the machine-readable source for agents and future tooling. The Markdown docs are for review and curation. The team-brain seed is intentionally short so agents can see the current design direction without rereading the full docs every task.
+Use `DESIGN.md` as the fast working contract for humans and agents. Use `docs/arch/design-system.md` for the deeper rationale, token reference, and exceptions. Keep `config/cpdb/design-system.json` as the machine-readable source for agents and future tooling. The team-brain seed is intentionally short so agents can see the current design direction without rereading the full docs every task.
 
 ## What Gets Created After Install
 
