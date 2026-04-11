@@ -5,6 +5,7 @@ This repository uses the Cross-Project Brain harness.
 ## Cross-Project Brain Protocol
 
 - Runtime rules come from `$CPB_RUNTIME_BRAIN`.
+- For frontend, UI, or design-system work, read `DESIGN.md` first. Use `docs/arch/design-system.md` only when deeper rationale, migration history, or exceptions are needed.
 - Project-only lessons go to `brains/project-operators/<github-username>/brain_v4`. `CPB_OPERATOR` is usually your GitHub username.
 - Cross-project lessons go to `$CPB_GLOBAL_BRAIN`. Use `--scope global`.
 - Machine-only quirks go to `Device Brain`. Use `--scope device`.

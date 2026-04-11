@@ -57,12 +57,14 @@ test("cpb scaffold-design-system creates docs, config, and brain seed from a pro
   assert.equal(config.project.name, "Practice Studio");
   assert.equal(config.foundations.color.primary, "#0F766E");
 
-  const designDoc = fs.readFileSync(path.join(repoPath, "docs", "design-system.md"), "utf8");
+  const designDoc = fs.readFileSync(path.join(repoPath, "DESIGN.md"), "utf8");
   assert.match(designDoc, /Practice planning and progress tracking app/u);
   assert.match(designDoc, /Starter Design Skill Available: Yes/u);
+  assert.match(designDoc, /Design Contract/u);
 
-  const foundationsDoc = fs.readFileSync(path.join(repoPath, "docs", "ui-specs", "foundations.md"), "utf8");
-  assert.match(foundationsDoc, /\| primary \| #0F766E \|/u);
+  const architectureDoc = fs.readFileSync(path.join(repoPath, "docs", "arch", "design-system.md"), "utf8");
+  assert.match(architectureDoc, /\| primary \| #0F766E \|/u);
+  assert.match(architectureDoc, /Design System Architecture/u);
 
   const brainSeed = fs.readFileSync(
     path.join(repoPath, "brains", "team-brain", "brain_v4", "cortex", "02_design-system.md"),

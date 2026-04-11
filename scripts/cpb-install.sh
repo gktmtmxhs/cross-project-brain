@@ -869,8 +869,8 @@ EOF
 if [[ "$design_system_scaffold" -eq 1 ]]; then
   cat <<EOF
   - config/cpdb/design-system.json
-  - docs/design-system.md
-  - docs/ui-specs/foundations.md
+  - DESIGN.md
+  - docs/arch/design-system.md
 EOF
 fi
 
@@ -891,7 +891,7 @@ Next steps:
   1. Open a new shell or run: source ~/.bashrc
   2. Run: cpb status
   3. Review docs/cpb/PROJECT_PROFILE.md and correct any guessed project context
-  4. If scaffolded, review docs/design-system.md and docs/ui-specs/foundations.md
+  4. If scaffolded, review DESIGN.md and docs/arch/design-system.md
   5. If you imported starter skills, review docs/cpb/THIRD_PARTY_NOTICES.md and .codex/skills/
   6. Open the repo and let your coding agent read AGENTS.md / CLAUDE.md
   7. Start working normally

@@ -211,14 +211,15 @@ cpb scaffold-design-system --style product-ui --primary "#0F766E" --force
 Generated artifacts:
 
 ```text
+DESIGN.md
+
 config/
   cpdb/
     design-system.json
 
 docs/
-  design-system.md
-  ui-specs/
-    foundations.md
+  arch/
+    design-system.md
 
 brains/
   team-brain/
@@ -234,7 +235,7 @@ This scaffold derives from the project profile and a preset catalog:
 - `editorial`
 - `concept-starter`
 
-Use the generated JSON as the machine-readable source for tools and future codegen. Use the Markdown files for review, edits, and product/design discussion.
+Use `DESIGN.md` as the fast working contract for humans and agents. Use `docs/arch/design-system.md` for the deeper rationale, token reference, and exceptions. Keep `config/cpdb/design-system.json` as the machine-readable source for tools and future codegen.
 
 ## Recommended Real-World Layout
 

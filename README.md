@@ -163,7 +163,7 @@ The installer now prefers a prebuilt `neuronfs` release asset for the current OS
 
 The installer can also import a curated starter-skill set from pinned upstream repositories. This is opt-in by flag and prompt, and the default registry is intentionally limited to allowlisted permissive licenses plus fixed commit refs. Imported starter skills are vendored under `.codex/vendor-skills/`, wrapped under `.codex/skills/`, recorded in `config/cpdb/skills.lock.json`, and disclosed in `docs/cpb/THIRD_PARTY_NOTICES.md`.
 
-If you opt in, the installer can also scaffold a first-pass design system from the project profile. That path writes `config/cpdb/design-system.json`, `docs/design-system.md`, `docs/ui-specs/foundations.md`, and `brains/team-brain/brain_v4/cortex/02_design-system.md`. This is deliberately a starting point, not a claim that CPB already understands the final brand.
+If you opt in, the installer can also scaffold a first-pass design system from the project profile. That path writes `config/cpdb/design-system.json`, `DESIGN.md`, `docs/arch/design-system.md`, and `brains/team-brain/brain_v4/cortex/02_design-system.md`. `DESIGN.md` is the fast working contract for humans and agents, while `docs/arch/design-system.md` holds the deeper rationale and token reference. This is deliberately a starting point, not a claim that CPB already understands the final brand.
 
 When a prebuilt asset is used, the installer also downloads the matching `.sha256` file and verifies the archive before extracting it. If the checksum file is missing or invalid, CPB falls back to the local Go build path instead of trusting the archive blindly.
 
