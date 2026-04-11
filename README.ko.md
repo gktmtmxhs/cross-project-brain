@@ -4,7 +4,27 @@
 
 Cross-Project Brain은 Codex와 Claude Code에서 반복 토큰 낭비를 줄이고, 에이전트가 작업 중 배운 재사용 가능한 교훈을 구조적으로 기록하며, 사용자가 프로젝트 구조 이해, 문제 해결 추적, 면접 준비에 그 결과를 다시 활용할 수 있게 만드는 프레임워크입니다.
 
-이 저장소는 다른 저장소에 설치해 재사용할 수 있는 **프레임워크 코어 초안**입니다.
+이 저장소는 다른 저장소에 설치해 재사용할 수 있는 **프레임워크 코어**입니다.
+
+## 안정성 및 호환성
+
+`v1.0.0`은 Cross-Project Brain framework core의 첫 stable public contract를 의미합니다.
+
+`v1.0.0`에서 안정 계약으로 보는 범위:
+
+- `scripts/cpb-install.sh` 와 공개 `cpb` CLI 엔트리포인트를 중심으로 한 설치 흐름
+- `AGENTS.md`, `CLAUDE.md`, `config/cpdb/*`, project-profile scaffold, `brains/team-brain/brain_v4` 로 이어지는 기본 생성 계약
+- `team`, `global`, `project`, `device`, `runtime` brain 분리 모델
+- `DESIGN.md`, `docs/arch/design-system.md`, `config/cpdb/design-system.json` 을 중심으로 한 optional design-system scaffold
+- starter-skill import의 lockfile/role-map 흐름과 finish-check workflow
+
+깨지는 변경으로 보지 않고 계속 개선될 수 있는 범위:
+
+- preset catalog, starter registry, template 문구
+- 추가 helper script, 설치 prompt, profile wrapper
+- 문서 깊이, 예시, release note 구조
+
+위 stable surface를 깨는 변경은 새 major version에서만 나가야 합니다.
 
 ## 이런 상황에서 특히 유용합니다
 
