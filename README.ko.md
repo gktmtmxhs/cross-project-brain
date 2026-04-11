@@ -306,14 +306,15 @@ cpb scaffold-design-system --style editorial --primary "#9A3412" --motion high -
 생성되는 산출물:
 
 ```text
+DESIGN.md
+
 config/
   cpdb/
     design-system.json
 
 docs/
-  design-system.md
-  ui-specs/
-    foundations.md
+  arch/
+    design-system.md
 
 brains/
   team-brain/
@@ -329,7 +330,7 @@ brains/
 - `editorial`
 - `concept-starter`
 
-`design-system.json` 은 에이전트와 후속 tooling이 읽는 machine-readable source이고, Markdown 문서는 사람이 검토하고 다듬는 용도입니다. team-brain seed는 에이전트가 매 작업마다 긴 문서를 다시 읽지 않아도 되도록 짧게 남겨 둔 포인터입니다.
+`DESIGN.md` 는 사람과 에이전트가 바로 읽는 빠른 작업 계약입니다. `docs/arch/design-system.md` 는 더 깊은 근거, 토큰 레퍼런스, 예외를 담는 문서입니다. `config/cpdb/design-system.json` 은 에이전트와 후속 tooling이 읽는 machine-readable source입니다. team-brain seed는 에이전트가 매 작업마다 긴 문서를 다시 읽지 않아도 되도록 짧게 남겨 둔 포인터입니다.
 
 ## 설치 후 저장소 구조
 
