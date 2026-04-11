@@ -223,8 +223,11 @@ test("cpb install can scaffold an initial design system", () => {
   assert.equal(designSystem.preset, "product-ui");
   assert.equal(designSystem.project.type, "web-app");
 
-  const designDoc = fs.readFileSync(path.join(targetRepo, "docs", "design-system.md"), "utf8");
+  const designDoc = fs.readFileSync(path.join(targetRepo, "DESIGN.md"), "utf8");
   assert.match(designDoc, /Product UI/u);
+
+  const architectureDoc = fs.readFileSync(path.join(targetRepo, "docs", "arch", "design-system.md"), "utf8");
+  assert.match(architectureDoc, /Design System Architecture/u);
 
   const designBrain = fs.readFileSync(
     path.join(targetRepo, "brains", "team-brain", "brain_v4", "cortex", "02_design-system.md"),

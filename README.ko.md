@@ -162,7 +162,7 @@ TTY에서 대화형으로 실행하면, 명시적으로 넘기지 않은 경우 
 
 설치 시에는 pinned upstream repo에서 curated starter skill 세트를 가져오도록 설정할 수도 있습니다. 이 경로는 기본으로 켜지지 않고, 플래그나 대화형 prompt로 opt-in 해야 합니다. 기본 registry는 허용한 permissive license와 고정 commit ref만 사용하도록 제한되어 있고, 가져온 skill은 `.codex/vendor-skills/`에 vendor되고 `.codex/skills/` wrapper, `config/cpdb/skills.lock.json`, `docs/cpb/THIRD_PARTY_NOTICES.md`까지 같이 생성합니다.
 
-원하면 초기 design system scaffold도 같이 만들 수 있습니다. 이 경로는 `config/cpdb/design-system.json`, `docs/design-system.md`, `docs/ui-specs/foundations.md`, `brains/team-brain/brain_v4/cortex/02_design-system.md` 를 생성합니다. 이것은 최종 브랜드를 확정하는 기능이 아니라, project profile을 바탕으로 첫 설계 방향을 잡아 주는 시작점입니다.
+원하면 초기 design system scaffold도 같이 만들 수 있습니다. 이 경로는 `config/cpdb/design-system.json`, `DESIGN.md`, `docs/arch/design-system.md`, `brains/team-brain/brain_v4/cortex/02_design-system.md` 를 생성합니다. `DESIGN.md` 는 사람과 에이전트가 바로 읽는 빠른 작업 계약이고, `docs/arch/design-system.md` 는 더 깊은 근거와 토큰 레퍼런스를 담습니다. 이것은 최종 브랜드를 확정하는 기능이 아니라, project profile을 바탕으로 첫 설계 방향을 잡아 주는 시작점입니다.
 
 그리고 personal repo를 함께 지정했다면:
 

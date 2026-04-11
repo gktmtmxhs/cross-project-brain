@@ -333,7 +333,7 @@ function buildDesignSystemConfig({ repoRoot, profile, presetName, primaryColor, 
     adoptionPlan: [
       "Keep this scaffold as the source of truth for shared visual rules before component-level polish begins.",
       "Mirror final token names into app code after the first production-facing UI pass, not before.",
-      "Use docs/ui-specs/foundations.md for human-readable review and config/cpdb/design-system.json for machine-readable consumption.",
+      "Use DESIGN.md for the fast working contract, docs/arch/design-system.md for deeper rationale, and config/cpdb/design-system.json for machine-readable consumption.",
       starterSkills.designSystem || starterSkills.uiUxAlias
         ? "Pair this scaffold with the imported design starter skill when asking coding agents for UI changes."
         : "Import a curated design starter skill later if you want stronger UI-specific prompting support.",
@@ -341,22 +341,46 @@ function buildDesignSystemConfig({ repoRoot, profile, presetName, primaryColor, 
   };
 }
 
-function renderDesignSystemDoc(config) {
+function renderDesignContractDoc(config) {
   const { project, starterSkills, presetLabel, preset, direction, foundations } = config;
   const starterSkillLine =
     starterSkills.designSystem || starterSkills.uiUxProMax
       ? "Yes. Prefer the imported design skill, then adapt it to this repo's local rules."
       : "No. This scaffold is still useful, but importing the design starter skill can improve UI prompting later.";
 
-  return `# Design System
+  return `# ${project.name} Design Contract
 
 - Generated At (UTC): ${config.generatedAt}
+- Owner: Frontend / Design
 - Project: ${project.name}
 - Project Type: ${project.type}
 - Shared Repo: ${project.sharedRepo}
 - Project Summary: ${project.summary || "TODO: replace this placeholder with a product-specific summary."}
 - Preset: ${preset} (${presetLabel})
 - Starter Design Skill Available: ${starterSkillLine}
+
+## Purpose
+
+- \`DESIGN.md\` is the fast design contract for humans and agents working in this repo.
+- Use this file as the default entrypoint for current project-level UI decisions, defaults, and change workflow.
+- Keep exact token values in \`config/cpdb/design-system.json\`, not here.
+- Keep deeper rationale, rollout notes, and exceptions in \`docs/arch/design-system.md\`.
+
+## Document Roles
+
+- \`DESIGN.md\`: current design-system rules, defaults, and reusable-vs-local boundaries.
+- \`docs/arch/design-system.md\`: rationale, rollout notes, detailed token tables, and exceptions.
+- \`config/cpdb/design-system.json\`: machine-readable scaffold source for tools and future codegen.
+- If the documents drift after real UI code exists, update code first, then \`config/cpdb/design-system.json\`, then \`DESIGN.md\`, then \`docs/arch/design-system.md\`.
+
+## Source Of Truth
+
+Use this order when making UI decisions:
+
+1. Shared tokens, primitives, and shells in product code once they exist
+2. \`config/cpdb/design-system.json\`
+3. \`DESIGN.md\`
+4. \`docs/arch/design-system.md\`
 
 ## Design Direction
 
@@ -367,56 +391,60 @@ ${direction.narrative}
 - Contrast: ${direction.contrast}
 - Initial Component Priorities: ${direction.componentPriorities.join(", ")}
 
-## Foundational Decisions
+## Core Global Defaults
 
-### Color
+- Prefer shared tokens and semantic names before introducing one-off raw values.
+- Typography defaults: heading ${foundations.typography.headingFamily}, body ${foundations.typography.bodyFamily}, mono ${foundations.typography.monoFamily}.
+- Layout defaults: max content width ${foundations.layout.maxContentWidthPx}px, ${foundations.layout.gridColumns}-column grid, reading width ${foundations.layout.readingWidthCh}ch.
+- Shape defaults: radius scale sm ${foundations.radius.sm}px, md ${foundations.radius.md}px, lg ${foundations.radius.lg}px, xl ${foundations.radius.xl}px.
+- Motion defaults: ${foundations.motion.level} motion with durations ${foundations.motion.durationMs.fast}/${foundations.motion.durationMs.base}/${foundations.motion.durationMs.slow}ms.
+- Promote repeated shells and component patterns into shared primitives before copying them into more than one feature.
+- Keep exploratory branded exceptions local until they prove stable enough to become reusable rules.
 
-- Primary: ${foundations.color.primary}
-- Accent: ${foundations.color.accent}
-- Canvas: ${foundations.color.canvas}
-- Surface: ${foundations.color.surface}
-- Surface Alt: ${foundations.color.surfaceAlt}
-- Text Strong: ${foundations.color.textStrong}
-- Text Muted: ${foundations.color.textMuted}
-- Border: ${foundations.color.border}
+## Working Rules
 
-### Typography
+1. Decide whether a UI change is one-off or a reusable design rule.
+2. If reusable, update the code source of truth first once tokens or shared primitives exist.
+3. Keep \`config/cpdb/design-system.json\` aligned with stable shared decisions.
+4. Document the current working contract in \`DESIGN.md\`.
+5. Extend \`docs/arch/design-system.md\` only when the change needs rationale, migration notes, or exceptions worth preserving.
 
-- Heading Family: ${foundations.typography.headingFamily}
-- Body Family: ${foundations.typography.bodyFamily}
-- Mono Family: ${foundations.typography.monoFamily}
+## Current Next Step
 
-### Layout, Shape, and Motion
-
-- Max Content Width: ${foundations.layout.maxContentWidthPx}px
-- Grid Columns: ${foundations.layout.gridColumns}
-- Reading Width: ${foundations.layout.readingWidthCh}ch
-- Radius Scale: sm ${foundations.radius.sm}px, md ${foundations.radius.md}px, lg ${foundations.radius.lg}px, xl ${foundations.radius.xl}px
-- Motion Level: ${foundations.motion.level}
-- Motion Guidance: ${foundations.motion.guidance}
-
-## Adoption Plan
-
-${config.adoptionPlan.map((item) => `- ${item}`).join("\n")}
-
-## Next Curation Steps
-
-- Replace any placeholder summary or brand language after the first real product/design review.
-- Keep this file stable and high-level. Put component-specific details in \`docs/ui-specs/\`.
-- If the product gains a stronger brand identity later, update \`config/cpdb/design-system.json\` first and then refresh the matching docs.
+- Replace placeholder product or brand language after the first real design review.
+- Promote only stable reusable rules into this file.
+- Keep the full token table and adoption rationale in \`docs/arch/design-system.md\`.
 `;
 }
 
-function renderFoundationsDoc(config) {
-  const { project, foundations, direction } = config;
+function renderArchitectureDesignSystemDoc(config) {
+  const { project, presetLabel, preset, foundations, direction } = config;
   const scaleRows = Object.entries(foundations.typography.scalePx)
     .map(([token, value]) => `| ${token} | ${value}px |`)
     .join("\n");
   const spacingScale = foundations.spacing.scalePx.map((value) => `\`${value}px\``).join(", ");
 
-  return `# UI Foundations
+  return `# Design System Architecture
 
-Generated from \`config/cpdb/design-system.json\` for ${project.name}.
+- Generated At (UTC): ${config.generatedAt}
+- Project: ${project.name}
+- Preset: ${preset} (${presetLabel})
+- Purpose: deeper rationale, token reference, and rollout notes behind \`DESIGN.md\`
+
+## Why This Exists
+
+- Keep \`DESIGN.md\` short enough to act as the default human or agent contract.
+- Keep this file for the detailed reasoning, token tables, and migration notes that would otherwise make \`DESIGN.md\` noisy.
+- Use \`config/cpdb/design-system.json\` as the machine-readable source when codegen or tooling needs exact values.
+
+## Design Direction
+
+${direction.narrative}
+
+- Keywords: ${direction.keywords.join(", ")}
+- Density: ${direction.density}
+- Contrast: ${direction.contrast}
+- Initial Component Priorities: ${direction.componentPriorities.join(", ")}
 
 ## Color Tokens
 
@@ -445,14 +473,11 @@ ${scaleRows}
 - Body Family: ${foundations.typography.bodyFamily}
 - Mono Family: ${foundations.typography.monoFamily}
 
-## Spacing and Radius
+## Spacing, Radius, Layout, and Motion
 
 - Base Unit: ${foundations.spacing.baseUnitPx}px
 - Spacing Scale: ${spacingScale}
 - Radius: sm ${foundations.radius.sm}px, md ${foundations.radius.md}px, lg ${foundations.radius.lg}px, xl ${foundations.radius.xl}px, pill ${foundations.radius.pill}px
-
-## Layout and Motion
-
 - Grid Columns: ${foundations.layout.gridColumns}
 - Max Content Width: ${foundations.layout.maxContentWidthPx}px
 - Reading Width: ${foundations.layout.readingWidthCh}ch
@@ -460,11 +485,16 @@ ${scaleRows}
 - Motion Durations: fast ${foundations.motion.durationMs.fast}ms, base ${foundations.motion.durationMs.base}ms, slow ${foundations.motion.durationMs.slow}ms
 - Motion Guidance: ${foundations.motion.guidance}
 
+## Adoption Plan
+
+${config.adoptionPlan.map((item) => `- ${item}`).join("\n")}
+
 ## Review Checklist
 
-- Ensure new pages use the same color tokens before introducing one-off values.
+- Ensure new pages use shared tokens before introducing one-off values.
 - Keep component density aligned with the chosen design direction: ${direction.density}.
 - Validate contrast and hierarchy in real screenshots before promoting component rules into shared docs.
+- Sync this file only when the decision needs deeper rationale than \`DESIGN.md\` should carry.
 `;
 }
 
@@ -483,7 +513,8 @@ function renderBrainSeed(config) {
 ## How To Use This
 
 - Treat this file as a quick pointer for agent context, not the full design source of truth.
-- Keep the detailed foundation rules in \`docs/design-system.md\` and \`docs/ui-specs/foundations.md\`.
+- Start with \`DESIGN.md\` for the current working contract.
+- Use \`docs/arch/design-system.md\` for deeper rationale and detailed foundation tables.
 - Promote only stable visual rules here after they survive actual product work.
 `;
 }
@@ -572,14 +603,14 @@ function main() {
     config,
     args.force,
   );
-  results["docs/design-system.md"] = writeTextFile(
-    path.join(args.repoRoot, "docs", "design-system.md"),
-    renderDesignSystemDoc(config),
+  results["DESIGN.md"] = writeTextFile(
+    path.join(args.repoRoot, "DESIGN.md"),
+    renderDesignContractDoc(config),
     args.force,
   );
-  results["docs/ui-specs/foundations.md"] = writeTextFile(
-    path.join(args.repoRoot, "docs", "ui-specs", "foundations.md"),
-    renderFoundationsDoc(config),
+  results["docs/arch/design-system.md"] = writeTextFile(
+    path.join(args.repoRoot, "docs", "arch", "design-system.md"),
+    renderArchitectureDesignSystemDoc(config),
     args.force,
   );
   results["brains/team-brain/brain_v4/cortex/02_design-system.md"] = writeTextFile(

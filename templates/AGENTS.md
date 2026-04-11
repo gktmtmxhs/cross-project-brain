@@ -3,6 +3,7 @@
 Thin Codex shim for this project. Keep this file small.
 
 - Runtime rules come from `$CPB_RUNTIME_BRAIN` via shell auto-env.
+- For frontend, UI, or design-system work, read `DESIGN.md` first. Use `docs/arch/design-system.md` only when deeper rationale, migration history, or exceptions are needed.
 - The agent should run CPB scripts autonomously. Humans normally should not.
 - Project-only lessons go to `brains/project-operators/<github-username>/brain_v4`. `CPB_OPERATOR` is usually your GitHub username.
 - Cross-project lessons go to `$CPB_GLOBAL_BRAIN`. Use `--scope global`.
