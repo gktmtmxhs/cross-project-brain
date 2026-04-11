@@ -28,6 +28,22 @@ function writeExecutable(filePath, contents) {
   fs.chmodSync(filePath, 0o755);
 }
 
+function parseGitHubRepoSlug(rawUrl) {
+  let value = String(rawUrl || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  value = value.replace(/\.git$/u, "");
+  value = value
+    .replace(/^git@github\.com:/u, "")
+    .replace(/^ssh:\/\/git@github\.com\//u, "")
+    .replace(/^https?:\/\/github\.com\//u, "")
+    .replace(/^git:\/\/github\.com\//u, "");
+
+  return /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u.test(value) ? value : "";
+}
+
 function createFakeNeuronFsRepo() {
   const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), "cpb-neuronfs-repo-"));
 
@@ -112,6 +128,26 @@ test("cpb neuronfs prebuilt helper prints deterministic asset and download URLs"
     checksumResult.stdout.trim(),
     "https://example.invalid/releases/download/neuronfs-970e0cd/neuronfs-970e0cd-linux-amd64.tar.gz.sha256",
   );
+});
+
+test("cpb neuronfs prebuilt helper derives the default release base URL from git origin", (t) => {
+  const origin = spawnSync("git", ["remote", "get-url", "origin"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (origin.status !== 0) {
+    t.skip("origin remote is not configured");
+    return;
+  }
+
+  const repoSlug = parseGitHubRepoSlug(origin.stdout);
+  if (!repoSlug) {
+    t.skip("origin remote is not a GitHub repo URL");
+    return;
+  }
+
+  const baseUrl = run("/bin/bash", [helperPath, "base-url", "970e0cd"]);
+  assert.equal(baseUrl.stdout.trim(), `https://github.com/${repoSlug}/releases/download/neuronfs-970e0cd`);
 });
 
 test("cpb install-neuronfs downloads a prebuilt CLI when available", () => {

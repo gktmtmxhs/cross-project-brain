@@ -194,6 +194,70 @@ expand_path() {
   printf '%s\n' "$value"
 }
 
+parse_github_repo_slug() {
+  local raw="${1:-}"
+
+  if [[ -z "$raw" ]]; then
+    return 1
+  fi
+
+  raw="${raw%.git}"
+  case "$raw" in
+    git@github.com:*)
+      raw="${raw#git@github.com:}"
+      ;;
+    ssh://git@github.com/*)
+      raw="${raw#ssh://git@github.com/}"
+      ;;
+    https://github.com/*)
+      raw="${raw#https://github.com/}"
+      ;;
+    http://github.com/*)
+      raw="${raw#http://github.com/}"
+      ;;
+    git://github.com/*)
+      raw="${raw#git://github.com/}"
+      ;;
+  esac
+
+  if [[ "$raw" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_framework_release_repo() {
+  local repo_url="${CPB_FRAMEWORK_REPO_URL:-}"
+  local origin_url=""
+
+  if parse_github_repo_slug "$repo_url" >/dev/null 2>&1; then
+    parse_github_repo_slug "$repo_url"
+    return 0
+  fi
+
+  origin_url="$(git -C "$framework_root" remote get-url origin 2>/dev/null || true)"
+  if parse_github_repo_slug "$origin_url" >/dev/null 2>&1; then
+    parse_github_repo_slug "$origin_url"
+    return 0
+  fi
+
+  return 1
+}
+
+stamp_release_repo_placeholder() {
+  local file_path="$1"
+  local repo_slug="$2"
+  local escaped_repo_slug="${repo_slug//&/\\&}"
+
+  if [[ -z "$repo_slug" || ! -f "$file_path" ]]; then
+    return 0
+  fi
+
+  sed -i "s|__CPB_RELEASE_REPO__|$escaped_repo_slug|g" "$file_path"
+}
+
 can_prompt_tty() {
   [[ "$non_interactive" -ne 1 && -t 0 && -t 1 ]]
 }
@@ -622,6 +686,9 @@ for source_path in "$framework_root"/scripts/cpb-* "$framework_root/scripts/proj
   script_name="$(basename "$source_path")"
   copy_file "$framework_root/scripts/$script_name" "$target_repo/scripts/$script_name"
 done
+
+framework_release_repo="$(resolve_framework_release_repo || true)"
+stamp_release_repo_placeholder "$target_repo/scripts/cpb-neuronfs-prebuilt.sh" "$framework_release_repo"
 
 copy_file "$framework_root/templates/AGENTS.md" "$target_repo/AGENTS.md"
 copy_file "$framework_root/templates/CLAUDE.md" "$target_repo/CLAUDE.md"
