@@ -6,7 +6,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/cpb-neuronfs-prebuilt.sh"
 
 repo_root="$(cd "$script_dir/.." && pwd)"
-repo_slug="${CPB_RELEASE_REPO:-gktmtmxhs/cross-project-brain}"
+repo_slug_default="$(cpdb_resolve_release_repo_slug || true)"
+repo_slug="${CPB_RELEASE_REPO:-$repo_slug_default}"
 repo_ref="${NEURONFS_REPO_REF:-970e0cd}"
 version="${NEURONFS_PREBUILT_VERSION:-$repo_ref}"
 tag="$(cpdb_neuronfs_prebuilt_default_tag "$version")"
@@ -28,7 +29,7 @@ Options:
   --tag <tag>                default: $tag
   --target-commit <sha>      default: $target_commit
   --out-dir <path>           default: $output_dir_default
-  --repo <owner/name>        default: $repo_slug
+  --repo <owner/name>        default: ${repo_slug:-auto-detect from origin or CPB_RELEASE_REPO}
   --notes-file <path>        optional release body
   --draft                    create a draft release
   --dry-run                  print the actions without executing them
@@ -89,6 +90,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "$repo_slug" ]]; then
+  echo "Could not resolve the release repo slug. Pass --repo, set CPB_RELEASE_REPO, or configure the git origin URL." >&2
+  exit 1
+fi
 
 if [[ ${#platforms[@]} -eq 0 ]]; then
   platforms=(

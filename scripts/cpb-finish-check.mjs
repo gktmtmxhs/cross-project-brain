@@ -242,9 +242,17 @@ function collectRecentMemoryFiles(brainRoot, label, sinceIso) {
 }
 
 function usage() {
-  process.stderr.write(
+  writeStderr(
     `Usage: node ${usageScript} [--init-baseline] [--reset-baseline] [--allow-no-lesson <reason>] [--allow-shared-career-publish <reason>]\n`,
   );
+}
+
+function writeStdout(message) {
+  fs.writeSync(process.stdout.fd, message);
+}
+
+function writeStderr(message) {
+  fs.writeSync(process.stderr.fd, message);
 }
 
 export function runCli(argv = process.argv.slice(2)) {
@@ -256,20 +264,20 @@ export function runCli(argv = process.argv.slice(2)) {
   const allowSharedReason = allowSharedIndex >= 0 ? argv[allowSharedIndex + 1] : "";
 
   if (allowIndex >= 0 && !allowReason) {
-    process.stderr.write("--allow-no-lesson requires a reason\n");
+    writeStderr("--allow-no-lesson requires a reason\n");
     usage();
-    process.exit(1);
+    return 1;
   }
 
   if (allowSharedIndex >= 0 && !allowSharedReason) {
-    process.stderr.write("--allow-shared-career-publish requires a reason\n");
+    writeStderr("--allow-shared-career-publish requires a reason\n");
     usage();
-    process.exit(1);
+    return 1;
   }
 
   if (argv.includes("-h") || argv.includes("--help")) {
     usage();
-    process.exit(0);
+    return 0;
   }
 
   const currentState = currentWorktreeState();
@@ -278,44 +286,44 @@ export function runCli(argv = process.argv.slice(2)) {
     if (!fs.existsSync(baselinePath)) {
       writeBaseline("auto-init", currentState);
       logAudit("baseline_init", { mode: "auto-init", paths: Object.keys(currentState).length });
-      process.stdout.write("CPB finish check baseline initialized.\n");
+      writeStdout("CPB finish check baseline initialized.\n");
     }
-    process.exit(0);
+    return 0;
   }
 
   if (resetBaseline) {
     writeBaseline("manual-reset", currentState);
     logAudit("baseline_reset", { paths: Object.keys(currentState).length });
-    process.stdout.write("CPB finish check baseline reset.\n");
-    process.exit(0);
+    writeStdout("CPB finish check baseline reset.\n");
+    return 0;
   }
 
   let baseline = loadBaseline();
   if (!baseline) {
     baseline = writeBaseline("implicit-init", currentState);
     logAudit("baseline_init", { mode: "implicit-init", paths: Object.keys(currentState).length });
-    process.stdout.write("CPB finish check baseline initialized. Run the command again near task end.\n");
-    process.exit(0);
+    writeStdout("CPB finish check baseline initialized. Run the command again near task end.\n");
+    return 0;
   }
 
   const changedPaths = diffSinceBaseline(baseline.state ?? {}, currentState);
   if (changedPaths.length === 0) {
-    process.stdout.write("CPB finish check: no unreviewed repo changes since last checkpoint.\n");
-    process.exit(0);
+    writeStdout("CPB finish check: no unreviewed repo changes since last checkpoint.\n");
+    return 0;
   }
 
   const sharedCareerPaths = changedPaths.filter(isSharedCareerRelPath);
   const nonSharedPaths = changedPaths.filter((relPath) => !isSharedCareerRelPath(relPath));
 
   if (sharedCareerPaths.length > 0 && !allowSharedReason) {
-    process.stderr.write("CPB finish check blocked: shared career docs changed without explicit publish approval.\n");
+    writeStderr("CPB finish check blocked: shared career docs changed without explicit publish approval.\n");
     for (const relPath of sharedCareerPaths) {
-      process.stderr.write(`- ${relPath}\n`);
+      writeStderr(`- ${relPath}\n`);
     }
-    process.stderr.write("\nShared career docs are publish targets, not default draft targets.\n");
-    process.stderr.write("If the user explicitly requested a shared/published version, rerun with:\n");
-    process.stderr.write(`  node ${usageScript} --allow-shared-career-publish "user explicitly requested shared publish"\n`);
-    process.exit(3);
+    writeStderr("\nShared career docs are publish targets, not default draft targets.\n");
+    writeStderr("If the user explicitly requested a shared/published version, rerun with:\n");
+    writeStderr(`  node ${usageScript} --allow-shared-career-publish "user explicitly requested shared publish"\n`);
+    return 3;
   }
 
   const memoryFiles = [
@@ -331,11 +339,11 @@ export function runCli(argv = process.argv.slice(2)) {
       memoryFiles,
       sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
     });
-    process.stdout.write("CPB finish check: recent durable lesson found. Baseline advanced.\n");
+    writeStdout("CPB finish check: recent durable lesson found. Baseline advanced.\n");
     for (const item of memoryFiles) {
-      process.stdout.write(`- ${item}\n`);
+      writeStdout(`- ${item}\n`);
     }
-    process.exit(0);
+    return 0;
   }
 
   if (sharedCareerPaths.length > 0 && nonSharedPaths.length === 0 && allowSharedReason) {
@@ -345,8 +353,8 @@ export function runCli(argv = process.argv.slice(2)) {
       sharedCareerPaths,
       reason: allowSharedReason,
     });
-    process.stdout.write(`CPB finish check: shared career publish acknowledged. Reason: ${allowSharedReason}\n`);
-    process.exit(0);
+    writeStdout(`CPB finish check: shared career publish acknowledged. Reason: ${allowSharedReason}\n`);
+    return 0;
   }
 
   if (allowReason) {
@@ -356,27 +364,27 @@ export function runCli(argv = process.argv.slice(2)) {
       reason: allowReason,
       sharedCareerPublish: allowSharedReason ? { approved: true, reason: allowSharedReason } : null,
     });
-    process.stdout.write(`CPB finish check: acknowledged with no lesson. Reason: ${allowReason}\n`);
-    process.exit(0);
+    writeStdout(`CPB finish check: acknowledged with no lesson. Reason: ${allowReason}\n`);
+    return 0;
   }
 
-  process.stderr.write("CPB finish check warning: repo changes detected since last checkpoint, but no new durable lesson was recorded.\n");
+  writeStderr("CPB finish check warning: repo changes detected since last checkpoint, but no new durable lesson was recorded.\n");
   for (const relPath of changedPaths) {
-    process.stderr.write(`- ${relPath}\n`);
+    writeStderr(`- ${relPath}\n`);
   }
-  process.stderr.write("\nIf this task produced a reusable lesson, queue one with:\n");
-  process.stderr.write(`  node ${logLearningUsageScript} --skill <skill-name> [--surface <surface>] [--env <env>] --topic <topic> --lesson <lesson_name> --summary "..." --problem "..." --root-cause "..." --fix "..." --evidence "..."\n`);
-  process.stderr.write("  Or use --role <general|frontend|backend|design|security|testing|platform|content|growth|education>.\n");
-  process.stderr.write("  Add --scope global if the lesson should help in other repos too.\n");
-  process.stderr.write("  Add --scope device if the lesson is only for this machine or local environment.\n");
+  writeStderr("\nIf this task produced a reusable lesson, queue one with:\n");
+  writeStderr(`  node ${logLearningUsageScript} --skill <skill-name> [--surface <surface>] [--env <env>] --topic <topic> --lesson <lesson_name> --summary "..." --problem "..." --root-cause "..." --fix "..." --evidence "..."\n`);
+  writeStderr("  Or use --role <general|frontend|backend|design|security|testing|platform|content|growth|education>.\n");
+  writeStderr("  Add --scope global if the lesson should help in other repos too.\n");
+  writeStderr("  Add --scope device if the lesson is only for this machine or local environment.\n");
   if (sharedCareerPaths.length > 0) {
-    process.stderr.write("  Shared career doc changes were detected. Add --allow-shared-career-publish if the user explicitly requested publish.\n");
+    writeStderr("  Shared career doc changes were detected. Add --allow-shared-career-publish if the user explicitly requested publish.\n");
   }
-  process.stderr.write("If no lesson is warranted, acknowledge it with:\n");
-  process.stderr.write(`  node ${usageScript} --allow-no-lesson "reason"\n`);
-  process.exit(2);
+  writeStderr("If no lesson is warranted, acknowledge it with:\n");
+  writeStderr(`  node ${usageScript} --allow-no-lesson "reason"\n`);
+  return 2;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === currentFilePath) {
-  runCli();
+  process.exitCode = runCli();
 }

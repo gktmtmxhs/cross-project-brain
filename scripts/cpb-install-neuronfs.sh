@@ -129,13 +129,19 @@ install_prebuilt_binary() {
   if [[ -n "$prebuilt_url" ]]; then
     archive_url="$prebuilt_url"
   else
-    archive_url="$(cpdb_neuronfs_prebuilt_download_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"
+    if ! archive_url="$(cpdb_neuronfs_prebuilt_download_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"; then
+      build_error="prebuilt CLI download URL could not be resolved; set NEURONFS_PREBUILT_BASE_URL, CPB_FRAMEWORK_REPO_URL, or CPB_RELEASE_REPO"
+      return 1
+    fi
   fi
 
   if [[ -n "$prebuilt_checksum_url" ]]; then
     checksum_url="$prebuilt_checksum_url"
   else
-    checksum_url="$(cpdb_neuronfs_prebuilt_checksum_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"
+    if ! checksum_url="$(cpdb_neuronfs_prebuilt_checksum_url "$prebuilt_version" "$goos" "$goarch" "$prebuilt_base_url")"; then
+      build_error="prebuilt CLI checksum URL could not be resolved; set NEURONFS_PREBUILT_BASE_URL, CPB_FRAMEWORK_REPO_URL, or CPB_RELEASE_REPO"
+      return 1
+    fi
   fi
 
   tmpdir="$(mktemp -d)"

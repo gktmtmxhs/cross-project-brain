@@ -7,6 +7,11 @@ const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "
 const scriptPath = path.join(repoRoot, "scripts", "cpb-publish-neuronfs-release.sh");
 
 test("cpb publish-neuronfs-release prints a deterministic dry-run plan", () => {
+  const origin = spawnSync("git", ["remote", "get-url", "origin"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+
   const result = spawnSync(
     "/bin/bash",
     [
@@ -33,4 +38,7 @@ test("cpb publish-neuronfs-release prints a deterministic dry-run plan", () => {
   assert.match(result.stdout, /\[dry-run\] push tag neuronfs-970e0cd/u);
   assert.match(result.stdout, /\[dry-run\] ensure release neuronfs-970e0cd exists/u);
   assert.match(result.stdout, /\[dry-run\] upload release assets from \/tmp\/cpb-prebuilt-assets/u);
+  if (origin.status === 0) {
+    assert.match(result.stdout, /\[dry-run\] ensure release neuronfs-970e0cd exists in .+/u);
+  }
 });

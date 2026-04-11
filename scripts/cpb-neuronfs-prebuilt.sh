@@ -1,5 +1,77 @@
 #!/usr/bin/env bash
 
+CPB_PREBUILT_RELEASE_REPO_DEFAULT="__CPB_RELEASE_REPO__"
+
+cpdb_prebuilt_repo_root() {
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  cd "$script_dir/.." && pwd
+}
+
+cpdb_parse_github_repo_slug() {
+  local raw="${1:-}"
+
+  if [[ -z "$raw" ]]; then
+    return 1
+  fi
+
+  raw="${raw%.git}"
+  case "$raw" in
+    git@github.com:*)
+      raw="${raw#git@github.com:}"
+      ;;
+    ssh://git@github.com/*)
+      raw="${raw#ssh://git@github.com/}"
+      ;;
+    https://github.com/*)
+      raw="${raw#https://github.com/}"
+      ;;
+    http://github.com/*)
+      raw="${raw#http://github.com/}"
+      ;;
+    git://github.com/*)
+      raw="${raw#git://github.com/}"
+      ;;
+  esac
+
+  if [[ "$raw" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+
+  return 1
+}
+
+cpdb_resolve_release_repo_slug() {
+  local repo_slug="${CPB_RELEASE_REPO:-}"
+  local framework_repo_url="${CPB_FRAMEWORK_REPO_URL:-}"
+  local repo_root origin_url=""
+
+  if [[ -n "$repo_slug" ]]; then
+    printf '%s\n' "$repo_slug"
+    return 0
+  fi
+
+  if cpdb_parse_github_repo_slug "$framework_repo_url" >/dev/null 2>&1; then
+    cpdb_parse_github_repo_slug "$framework_repo_url"
+    return 0
+  fi
+
+  if [[ "$CPB_PREBUILT_RELEASE_REPO_DEFAULT" == */* ]]; then
+    printf '%s\n' "$CPB_PREBUILT_RELEASE_REPO_DEFAULT"
+    return 0
+  fi
+
+  repo_root="$(cpdb_prebuilt_repo_root)"
+  origin_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+  if cpdb_parse_github_repo_slug "$origin_url" >/dev/null 2>&1; then
+    cpdb_parse_github_repo_slug "$origin_url"
+    return 0
+  fi
+
+  return 1
+}
+
 cpdb_detect_prebuilt_goos() {
   local uname_s
   uname_s="$(uname -s)"
@@ -66,8 +138,13 @@ cpdb_neuronfs_prebuilt_default_tag() {
 cpdb_neuronfs_prebuilt_default_base_url() {
   local version="${1:?version required}"
   local tag
+  local repo_slug
   tag="$(cpdb_neuronfs_prebuilt_default_tag "$version")"
-  printf 'https://github.com/gktmtmxhs/cross-project-brain/releases/download/%s\n' "$tag"
+  if ! repo_slug="$(cpdb_resolve_release_repo_slug)"; then
+    echo "Could not resolve the CPB release repo slug. Set CPB_RELEASE_REPO or CPB_FRAMEWORK_REPO_URL." >&2
+    return 1
+  fi
+  printf 'https://github.com/%s/releases/download/%s\n' "$repo_slug" "$tag"
 }
 
 cpdb_neuronfs_prebuilt_download_url() {
