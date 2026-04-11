@@ -4,7 +4,27 @@
 
 Cross-Project Brain is a framework for Codex and Claude Code that reduces repeated token waste, records reusable lessons agents learn while working, and helps users reuse those results for project understanding, problem-solving traceability, and interview preparation.
 
-This repo is a reusable **framework core draft** that can be installed into other repositories.
+This repo is the reusable **framework core** that can be installed into other repositories.
+
+## Stability And Compatibility
+
+`v1.0.0` marks the first stable public contract for the Cross-Project Brain framework core.
+
+Stable in `v1.0.0`:
+
+- the install flow centered on `scripts/cpb-install.sh` and the public `cpb` CLI entrypoints
+- the baseline generated repo contract: `AGENTS.md`, `CLAUDE.md`, `config/cpdb/*`, project-profile scaffolds, and `brains/team-brain/brain_v4`
+- the memory split between `team`, `global`, `project`, `device`, and `runtime` brains
+- the optional design-system scaffold built around `DESIGN.md`, `docs/arch/design-system.md`, and `config/cpdb/design-system.json`
+- the starter-skill import lockfile/role-map flow and the finish-check workflow
+
+May still evolve without being treated as a breaking contract:
+
+- preset catalogs, starter registries, and template wording
+- additional helper scripts, install prompts, and profile wrappers
+- documentation depth, examples, and release notes structure
+
+Breaking changes to the stable surfaces above should ship only in a new major version.
 
 ## When This Is Especially Useful
 
