@@ -22,6 +22,44 @@ fi
 
 shift || true
 
+should_emit_update_notice() {
+  if [[ "${CPB_SKIP_UPDATE_CHECK:-0}" == "1" || "${CPB_UPDATE_NOTICE_SHOWN:-0}" == "1" ]]; then
+    return 1
+  fi
+  if [[ -n "${CI:-}" ]] || [[ ! -t 2 ]]; then
+    return 1
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if [[ $# -gt 0 ]]; then
+    case "$1" in
+      -h|--help|--version|version|login|logout|completion|mcp|mcp-server|app-server|sandbox|debug|features)
+        return 1
+        ;;
+    esac
+  fi
+
+  return 0
+}
+
+maybe_run_update_notice() {
+  local repo_root="$1"
+  shift || true
+  local checker="$repo_root/scripts/cpb-check-updates.mjs"
+
+  if [[ ! -f "$checker" ]]; then
+    return 0
+  fi
+  if ! should_emit_update_notice "$@"; then
+    return 0
+  fi
+
+  env -u NODE_OPTIONS node "$checker" --repo-root "$repo_root" || true
+  export CPB_UPDATE_NOTICE_SHOWN=1
+}
+
 resolve_abs_dir() {
   local candidate="$1"
   if [[ -d "$candidate" ]]; then
@@ -106,6 +144,7 @@ resolve_real_agent() {
 
 repo_root="$(find_cpb_repo_root || true)"
 if [[ -n "$repo_root" ]]; then
+  maybe_run_update_notice "$repo_root" "$@"
   repo_wrapper="$(resolve_repo_wrapper "$repo_root" || true)"
   if [[ -n "$repo_wrapper" ]]; then
     exec bash "$repo_wrapper" "$agent_name" "$@"

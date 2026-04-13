@@ -228,6 +228,96 @@ parse_github_repo_slug() {
   return 1
 }
 
+resolve_framework_repo_url() {
+  local repo_url="${CPB_FRAMEWORK_REPO_URL:-}"
+
+  if [[ -n "$repo_url" ]]; then
+    printf '%s\n' "$repo_url"
+    return 0
+  fi
+
+  repo_url="$(git -C "$framework_root" remote get-url origin 2>/dev/null || true)"
+  if [[ -n "$repo_url" ]]; then
+    printf '%s\n' "$repo_url"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_framework_update_ref() {
+  local repo_ref="${CPB_FRAMEWORK_REPO_REF:-}"
+  if [[ -n "$repo_ref" ]]; then
+    printf '%s\n' "$repo_ref"
+    return 0
+  fi
+
+  local current_branch
+  current_branch="$(git -C "$framework_root" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ -n "$current_branch" ]]; then
+    printf '%s\n' "$current_branch"
+    return 0
+  fi
+
+  local remote_head
+  remote_head="$(git -C "$framework_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  remote_head="${remote_head#origin/}"
+  if [[ -n "$remote_head" ]]; then
+    printf '%s\n' "$remote_head"
+    return 0
+  fi
+
+  printf 'main\n'
+}
+
+resolve_framework_commit() {
+  git -C "$framework_root" rev-parse HEAD 2>/dev/null || true
+}
+
+json_escape() {
+  local value="${1:-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+write_framework_lock() {
+  local lock_path="$target_repo/config/cpdb/framework.lock.json"
+  local framework_repo_url="$1"
+  local framework_release_repo="$2"
+  local update_ref="$3"
+  local installed_commit="$4"
+  local installed_at="$5"
+
+  mkdir -p "$(dirname "$lock_path")"
+  cat >"$lock_path" <<EOF
+{
+  "version": 1,
+  "frameworkRepoUrl": "$(json_escape "$framework_repo_url")",
+  "frameworkReleaseRepo": "$(json_escape "$framework_release_repo")",
+  "updateRef": "$(json_escape "$update_ref")",
+  "installedCommit": "$(json_escape "$installed_commit")",
+  "installedAt": "$(json_escape "$installed_at")",
+  "installOptions": {
+    "sharedRepo": $([[ "$shared_repo" -eq 1 ]] && printf 'true' || printf 'false'),
+    "personalRepo": "$(json_escape "$personal_repo")",
+    "setupShell": $([[ "$setup_shell" -eq 1 ]] && printf 'true' || printf 'false'),
+    "installNeuronfs": $([[ "$install_neuronfs" -eq 1 ]] && printf 'true' || printf 'false'),
+    "startAutogrowth": $([[ "$start_autogrowth" -eq 1 ]] && printf 'true' || printf 'false'),
+    "autoInstallGo": $([[ "$auto_install_go" -eq 1 ]] && printf 'true' || printf 'false'),
+    "starterSkillImport": $([[ "$starter_skill_import" -eq 1 ]] && printf 'true' || printf 'false'),
+    "starterSkillPreset": "$(json_escape "$starter_skill_preset")",
+    "designSystemScaffold": $([[ "$design_system_scaffold" -eq 1 ]] && printf 'true' || printf 'false'),
+    "projectType": "$(json_escape "$project_profile_type")",
+    "projectSummary": "$(json_escape "$project_profile_summary")"
+  }
+}
+EOF
+}
+
 resolve_framework_release_repo() {
   local repo_url="${CPB_FRAMEWORK_REPO_URL:-}"
   local origin_url=""
@@ -689,6 +779,10 @@ done
 
 framework_release_repo="$(resolve_framework_release_repo || true)"
 stamp_release_repo_placeholder "$target_repo/scripts/cpb-neuronfs-prebuilt.sh" "$framework_release_repo"
+framework_repo_url="$(resolve_framework_repo_url || true)"
+framework_update_ref="$(resolve_framework_update_ref)"
+framework_commit="$(resolve_framework_commit)"
+write_framework_lock "$framework_repo_url" "$framework_release_repo" "$framework_update_ref" "$framework_commit" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 copy_file "$framework_root/templates/AGENTS.md" "$target_repo/AGENTS.md"
 copy_file "$framework_root/templates/CLAUDE.md" "$target_repo/CLAUDE.md"
@@ -855,6 +949,7 @@ Target repo: $target_repo
 
 Installed:
   - bin/cpb
+  - config/cpdb/framework.lock.json
   - scripts/cpb-*
   - AGENTS.md
   - CLAUDE.md
