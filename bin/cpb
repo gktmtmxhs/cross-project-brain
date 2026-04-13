@@ -4,6 +4,29 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
+maybe_run_update_notice() {
+  local primary_command="${1:-}"
+  local checker="$repo_root/scripts/cpb-check-updates.mjs"
+
+  if [[ "${CPB_SKIP_UPDATE_CHECK:-0}" == "1" || "${CPB_UPDATE_NOTICE_SHOWN:-0}" == "1" ]]; then
+    return 0
+  fi
+  if [[ -n "${CI:-}" ]] || [[ ! -t 2 ]]; then
+    return 0
+  fi
+  case "$primary_command" in
+    check-updates|upgrade-framework)
+      return 0
+      ;;
+  esac
+  if ! command -v node >/dev/null 2>&1 || [[ ! -f "$checker" ]]; then
+    return 0
+  fi
+
+  env -u NODE_OPTIONS node "$checker" --repo-root "$repo_root" || true
+  export CPB_UPDATE_NOTICE_SHOWN=1
+}
+
 command_name=""
 dispatch_args=()
 command_consumed=0
@@ -30,7 +53,15 @@ for ((index = 1; index <= $#; index++)); do
   esac
 done
 
+maybe_run_update_notice "$command_name"
+
 case "$command_name" in
+  check-updates)
+    exec env -u NODE_OPTIONS node "$repo_root/scripts/cpb-check-updates.mjs" --repo-root "$repo_root" "${dispatch_args[@]}"
+    ;;
+  upgrade-framework)
+    exec bash "$repo_root/scripts/cpb-upgrade-framework.sh" --repo-root "$repo_root" "${dispatch_args[@]}"
+    ;;
   import-starter-skills)
     exec bash "$repo_root/scripts/cpb-import-starter-skills.sh" "${dispatch_args[@]}"
     ;;
