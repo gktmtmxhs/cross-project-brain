@@ -27,6 +27,34 @@ CPB_FRAMEWORK_REPO_URL=https://github.com/<owner>/cross-project-brain.git \
 bash <(curl -fsSL https://raw.githubusercontent.com/<owner>/cross-project-brain/main/scripts/cpb-install.sh)
 ```
 
+## Keeping Existing Installs Updated
+
+New CPB installs now record framework metadata in `config/cpdb/framework.lock.json` and can surface upgrade notices during interactive `cpb`, `codex`, or `claude` sessions inside CPB-enabled repos.
+
+Recommended manual checks:
+
+```bash
+bash bin/cpb check-updates
+bash bin/cpb upgrade-framework
+```
+
+What these do:
+
+- `check-updates`
+  - compares the installed framework commit against the configured update channel
+  - writes a throttled cache under `.agent/.../state/`
+  - prints a notice only when a newer framework commit is available
+- `upgrade-framework`
+  - clones the configured framework repo/ref into a temporary checkout
+  - re-runs `cpb-install.sh` with the recorded install options
+  - refreshes managed `codex` / `claude` shims when they are already CPB-managed
+
+Important note for older installs:
+
+- Repos installed before `framework.lock.json` and the update-check scripts existed will not magically start showing notices on their own.
+- Existing users should refresh once manually by reinstalling from the latest framework checkout or by running the newest `upgrade-framework` flow after updating their local framework copy.
+- After that first refresh, future interactive sessions can warn when newer framework commits are available.
+
 ## What The Installer Does
 
 The bootstrap script is intended to do these steps in order:
