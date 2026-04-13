@@ -6,11 +6,17 @@ source "$script_dir/cpb-paths.sh"
 
 repo_root="${CPB_REPO_ROOT:-$(cpb_repo_root)}"
 bin_dir="${CPB_SETUP_AGENT_WRAPPERS_BIN_DIR:-$HOME/.local/bin}"
-wrapper_runner="${CPB_SETUP_AGENT_WRAPPERS_RUNNER:-$repo_root/scripts/cpb-agent-wrapper.sh}"
+default_wrapper_runner="$repo_root/scripts/cpb-agent-wrapper.sh"
+global_wrapper_runner="$script_dir/cpb-global-agent-wrapper.sh"
+wrapper_runner="${CPB_SETUP_AGENT_WRAPPERS_RUNNER:-$default_wrapper_runner}"
 wrapper_path_env_name="${CPB_SETUP_AGENT_WRAPPERS_PATH_ENV_NAME:-CPB_WRAPPER_PATH}"
 label="${CPB_SETUP_AGENT_WRAPPERS_LABEL:-CPB}"
 agents="${CPB_SETUP_AGENT_WRAPPERS_AGENTS:-codex claude}"
 usage_script="${CPB_SETUP_AGENT_WRAPPERS_USAGE_SCRIPT:-scripts/cpb-setup-agent-wrappers.sh}"
+
+if [[ -z "${CPB_SETUP_AGENT_WRAPPERS_RUNNER:-}" ]] && [[ -f "$global_wrapper_runner" ]]; then
+  wrapper_runner="$global_wrapper_runner"
+fi
 
 usage() {
   cat <<EOF
